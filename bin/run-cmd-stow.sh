@@ -14,7 +14,7 @@ fi
 cd ~
 
 # check if the repository is already cloned
-if [ -d "$REPO_NAME" ]; then
+if [ -d ".$REPO_NAME" ]; then
     echo "Repository $REPO_NAME already cloned."
 else
     echo "Cloning repository..."
@@ -25,14 +25,17 @@ fi
 if [ $? -eq 0 ]; then
     echo "Repository cloned successfully."
 
-    # a refactory of stow configuration is needed
-        
-    # rm -rf ~/.config/starship.toml
+    rm -f ~/.aliases
+    rm -f ~/.bashrc
+    rm -f ~/.config/gh/config.yml
+    rm -f ~/.config/git/config
     
-    # cd ".$REPO_NAME" 
-    # git checkout arch
-    # echo "Applying stow overrides..."
-    # stow starship
+    cd ".$REPO_NAME" 
+    git checkout arch
+    echo "Applying stow overrides..."
+    stow bash
+    stow gh
+    stow git
 
 else
     echo "Failed to clone repository."

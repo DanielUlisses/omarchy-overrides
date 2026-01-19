@@ -2,7 +2,7 @@
 
 set -e
 
-HYPERLAND_CONFIG="$HOME/.config/hyperland/hyperland.conf"
+HYPERLAND_CONFIG="$HOME/.config/hypr/hyprland.conf"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OVERRIDES_CONFIG="$SCRIPT_DIR/../overrides/omarchy-overrides.conf"
 SOURCE_LINE="source = $OVERRIDES_CONFIG"

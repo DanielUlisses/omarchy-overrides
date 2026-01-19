@@ -7,3 +7,8 @@
 . ./installations/install-vscode.sh
 
 . ./installations/install-overrides.sh
+
+. ./installations/global-uninstall.sh
+. ./bin/run-cmd-stow.sh
+
+echo "Omarchy overrides installation completed."

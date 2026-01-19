@@ -11,4 +11,8 @@
 . ./installations/global-uninstall.sh
 . ./bin/run-cmd-stow.sh
 
+hyprctl keyword monitor "eDP-1, disable"
+hyprctl keyword monitor "DP-6, disable"
+hyprctl keyword monitor "DP-6, enable"
+
 echo "Omarchy overrides installation completed."

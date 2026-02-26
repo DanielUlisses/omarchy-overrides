@@ -3,7 +3,8 @@
 # Install VSCode and configure it to use the gnome-libsecret password store, not to update automatically, and to use the current Omarchy theme.
 
 echo "Installing VSCode..."
-omarchy-pkg-add visual-studio-code-bin
+# omarchy-pkg-add visual-studio-code-bin
+yay -S --noconfirm visual-studio-code
 
 mkdir -p ~/.vscode ~/.config/Code/User
 
@@ -22,6 +23,12 @@ EOF
 
 # Ensure VSC's own auto-update feature is turned off
 printf '{\n  "update.mode": "none"\n}\n' > ~/.config/Code/User/settings.json
+
+#install code insiders
+yay -S --noconfirm visual-studio-code-insiders
+
+export EDITOR=code-insiders
+echo "export EDITOR=code-insiders" >> ~/.bashrc
 
 # Apply Omarchy theme to VSCode
 omarchy-theme-set-vscode

@@ -4,7 +4,8 @@ set -e
 
 HYPERLAND_CONFIG="$HOME/.config/hypr/hyprland.conf"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OVERRIDES_CONFIG="$SCRIPT_DIR/../overrides/omarchy-overrides.conf"
+OVERRIDES_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+OVERRIDES_CONFIG="$OVERRIDES_DIR/overrides/omarchy-overrides.conf"
 SOURCE_LINE="source = $OVERRIDES_CONFIG"
 
 # Check if hyperland.conf exists

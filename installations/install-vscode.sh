@@ -4,7 +4,7 @@
 
 echo "Installing VSCode..."
 # omarchy-pkg-add visual-studio-code-bin
-yay -S --noconfirm visual-studio-code
+yay -Sc --answerclean All --noconfirm visual-studio-code-bin
 
 mkdir -p ~/.vscode ~/.config/Code/User
 

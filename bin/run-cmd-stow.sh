@@ -1,43 +1,41 @@
-#!/bin/sh
-REPO_URL="git@github.com:DanielUlisses/dotfiles"
-REPO_NAME="omarchy-overrides"
+#!/usr/bin/env bash
 
-is_stow_installed() {
-    command -v stow >/dev/null 2>&1
+set -euo pipefail
+
+DOTFILES_REPO="${HOME}/.omarchy-overrides"
+
+if ! command -v stow >/dev/null 2>&1; then
+  echo "Stow is not installed. Install it first."
+  exit 1
+fi
+
+if [[ ! -d "${DOTFILES_REPO}" ]]; then
+  echo "Dotfiles repo not found: ${DOTFILES_REPO}" >&2
+  exit 1
+fi
+
+backup_if_needed() {
+  local target="$1"
+  if [[ -L "${target}" ]]; then
+    rm -f "${target}"
+    echo "Removed pre-existing symlink ${target}"
+    return
+  fi
+
+  if [[ -e "${target}" ]]; then
+    local backup="${target}.bak.$(date +%Y%m%d%H%M%S)"
+    mv "${target}" "${backup}"
+    echo "Backed up ${target} -> ${backup}"
+  fi
 }
 
-if ! is_stow_installed; then
-    echo "Stow is not installed. Install it first."
-    exit 1
-fi
+backup_if_needed "${HOME}/.config/gh/config.yml"
+backup_if_needed "${HOME}/.config/git/ignore"
+backup_if_needed "${HOME}/.gitconfig"
 
-cd ~
+cd "${DOTFILES_REPO}"
 
-# check if the repository is already cloned
-if [ -d ".$REPO_NAME" ]; then
-    echo "Repository $REPO_NAME already cloned."
-else
-    echo "Cloning repository..."
-    git clone "$REPO_URL" ".$REPO_NAME"
-fi
-
-#check if the clone was successful
-if [ $? -eq 0 ]; then
-    echo "Repository cloned successfully."
-
-    rm -f ~/.aliases
-    rm -f ~/.bashrc
-    rm -f ~/.config/gh/config.yml
-    rm -f ~/.config/git/config
-    
-    cd ".$REPO_NAME" 
-    git checkout arch
-    echo "Applying stow overrides..."
-    stow bash
-    stow gh
-    stow git
-
-else
-    echo "Failed to clone repository."
-    exit 1
-fi
+echo "Applying stow overrides from ${DOTFILES_REPO}..."
+stow bash
+stow gh
+stow git

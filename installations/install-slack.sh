@@ -1,4 +1,4 @@
 #!/bin/sh
 
 echo "Installing Slack..."
-yay -S --noconfirm slack-desktop-wayland
+yay -Sc --answerclean All --noconfirm slack-desktop-wayland

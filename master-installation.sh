@@ -1,10 +1,14 @@
-#!/bin/sh
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 . ./installations/install-stow.sh
 . ./installations/install-slack.sh
 . ./installations/install-teams-for-linux.sh
 . ./installations/install-google-chrome.sh
 . ./installations/install-vscode.sh
+. ./installations/install-chat-notifications.sh
+. ./installations/install-keyd.sh
 
 . ./installations/install-overrides.sh
 

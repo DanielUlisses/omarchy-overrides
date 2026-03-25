@@ -28,7 +28,7 @@ fi
 mkdir -p "$(dirname "${TARGET_SCRIPT}")"
 install -m 755 "${SOURCE_SCRIPT}" "${TARGET_SCRIPT}"
 
-python - "${TARGET_CONFIG}" "${TARGET_SCRIPT}" <<'PY'
+python3 - "${TARGET_CONFIG}" "${TARGET_SCRIPT}" <<'PY'
 from pathlib import Path
 import sys
 
@@ -61,59 +61,21 @@ def find_array_bounds(source: str, key: str) -> tuple[int, int]:
 
     return left_bracket, right_bracket
 
-def ensure_modules_center(source: str) -> tuple[str, bool]:
-    left, right = find_array_bounds(source, '"modules-center"')
+def ensure_modules_right(source: str) -> tuple[str, bool]:
+    left, right = find_array_bounds(source, '"modules-right"')
     block = source[left:right + 1]
 
     if '"custom/chat-notifications"' in block:
         return source, False
 
     insertion = '    "custom/chat-notifications",\n'
-    clock_pos = block.find('"clock"')
+    updatespacman_pos = block.find('"custom/updatespacman"')
 
-    if clock_pos != -1:
-        line_end = block.find("\n", clock_pos)
+    if updatespacman_pos != -1:
+        line_end = block.find("\n", updatespacman_pos)
         if line_end == -1:
             line_end = len(block) - 1
         block = block[: line_end + 1] + insertion + block[line_end + 1 :]
-    else:
-        close_pos = block.rfind("]")
-        if close_pos == -1:
-            raise SystemExit(f"Invalid modules-center block in {config_path}")
-
-        body = block[:close_pos]
-        scan = len(body) - 1
-        while scan >= 0 and body[scan].isspace():
-            scan -= 1
-
-        if scan >= 0 and body[scan] not in "[,":
-            body = body[: scan + 1] + "," + body[scan + 1 :]
-
-        block = body + insertion + block[close_pos:]
-
-    return source[:left] + block + source[right + 1 :], True
-
-def ensure_modules_right_tray(source: str) -> tuple[str, bool]:
-    left, right = find_array_bounds(source, '"modules-right"')
-    block = source[left:right + 1]
-
-    if '"tray"' in block:
-        return source, False
-
-    insertion = '    "tray",\n'
-    wifi_pos = block.find('"custom/wifi"')
-    battery_pos = block.find('"battery"')
-
-    if wifi_pos != -1:
-        line_end = block.find("\n", wifi_pos)
-        if line_end == -1:
-            line_end = len(block) - 1
-        block = block[: line_end + 1] + insertion + block[line_end + 1 :]
-    elif battery_pos != -1:
-        line_start = block.rfind("\n", 0, battery_pos)
-        if line_start == -1:
-            line_start = 0
-        block = block[: line_start + 1] + insertion + block[line_start + 1 :]
     else:
         close_pos = block.rfind("]")
         if close_pos == -1:
@@ -157,103 +119,60 @@ def ensure_chat_module(source: str) -> tuple[str, bool]:
     prefix += "\n"
     return prefix + module_block + source[final_brace:], True
 
-def ensure_tray_module(source: str) -> tuple[str, bool]:
-    if '"tray": {' in source:
-        return source, False
-
-    module_block = (
-        '  "tray": {\n'
-        '    "icon-size": 14,\n'
-        '    "spacing": 8\n'
-        '  },\n'
-    )
-
-    anchor = source.find('  "battery": {')
-    if anchor != -1:
-        return source[:anchor] + module_block + source[anchor:], True
-
-    final_brace = source.rfind("}")
-    if final_brace == -1:
-        raise SystemExit(f"Invalid JSON object in {config_path}")
-
-    prefix = source[:final_brace].rstrip()
-    if not prefix.endswith(","):
-        prefix += ","
-    prefix += "\n"
-    return prefix + module_block + source[final_brace:], True
-
-text, changed_center = ensure_modules_center(text)
-text, changed_modules_right = ensure_modules_right_tray(text)
+text, changed_right = ensure_modules_right(text)
 text, changed_module = ensure_chat_module(text)
-text, changed_tray_module = ensure_tray_module(text)
 
-if changed_center or changed_modules_right or changed_module or changed_tray_module:
+if changed_right or changed_module:
     config_path.write_text(text)
-    print("Updated Waybar config.jsonc")
-else:
-    print("Waybar config.jsonc already up to date")
 PY
 
-python - "${TARGET_STYLE}" <<'PY'
+python3 - "${TARGET_STYLE}" <<'PY'
 from pathlib import Path
 import sys
 
 style_path = Path(sys.argv[1])
 text = style_path.read_text()
 
-chat_block = (
-    "\n#custom-chat-notifications {\n"
-    "  min-width: 12px;\n"
-    "  margin-left: 8px;\n"
-    "}\n\n"
-    "#custom-chat-notifications.empty {\n"
-    "  margin-left: 0;\n"
-    "}\n"
-)
-
-tray_hidden_block = (
-    "\n#tray {\n"
-    "    min-width: 0;\n"
-    "    padding: 0;\n"
-    "    margin: 0;\n"
-    "}\n"
-    "#tray > .passive,\n"
-    "#tray > .active,\n"
-    "#tray > .needs-attention {\n"
-    "    -gtk-icon-transform: scale(0);\n"
-    "    min-width: 0;\n"
-    "    min-height: 0;\n"
-    "    margin: 0;\n"
-    "    padding: 0;\n"
-    "    opacity: 0;\n"
-    "}\n"
-)
-
-clock_anchor = "#clock {"
-anchor_pos = text.find(clock_anchor)
 changed = False
 
-if "#custom-chat-notifications {" not in text:
-    if anchor_pos != -1:
-        clock_end = text.find("}\n", anchor_pos)
-        if clock_end != -1:
-            insert_pos = clock_end + 2
-            text = text[:insert_pos] + chat_block + text[insert_pos:]
-        else:
-            text = text.rstrip() + chat_block + "\n"
+if "#custom-chat-notifications" not in text:
+    # Add #custom-chat-notifications to the shared selector group that already
+    # includes #custom-update, so it inherits the same min-width/margin/padding.
+    update_selector = "#custom-update {"
+    update_pos = text.find(update_selector)
+    if update_pos != -1:
+        text = text[:update_pos] + "#custom-chat-notifications,\n" + text[update_pos:]
     else:
-        text = text.rstrip() + chat_block + "\n"
-    changed = True
+        text = text.rstrip() + (
+            "\n\n#custom-chat-notifications {\n"
+            "  min-width: 12px;\n"
+            "  margin: 1px 4px 1px 4px;\n"
+            "  padding-left: 1px;\n"
+            "  padding-right: 1px;\n"
+            "}\n"
+        )
 
-if "#tray > .passive," not in text:
-    text = text.rstrip() + tray_hidden_block + "\n"
+    # Insert .empty rule right after the closing brace of the block that now
+    # contains #custom-chat-notifications.
+    chat_pos = text.find("#custom-chat-notifications")
+    if chat_pos != -1:
+        brace_open = text.find("{", chat_pos)
+        if brace_open != -1:
+            brace_close = text.find("}", brace_open)
+            if brace_close != -1:
+                empty_block = (
+                    "\n\n#custom-chat-notifications.empty {\n"
+                    "  min-width: 0;\n"
+                    "  margin: 0;\n"
+                    "  padding: 0;\n"
+                    "}\n"
+                )
+                text = text[:brace_close + 1] + empty_block + text[brace_close + 1:]
+
     changed = True
 
 if changed:
     style_path.write_text(text)
-    print("Updated Waybar style.css")
-else:
-    print("Waybar style.css already up to date")
 PY
 
 if command -v omarchy-restart-waybar >/dev/null 2>&1; then

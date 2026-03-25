@@ -7,8 +7,9 @@ set -euo pipefail
 . ./installations/install-teams-for-linux.sh
 . ./installations/install-google-chrome.sh
 . ./installations/install-vscode.sh
-. ./installations/install-chat-notifications.sh
 . ./installations/install-keyd.sh
+. ./installations/install-waybar-configuration.sh
+. ./installations/install-chat-notifications.sh
 
 . ./installations/install-overrides.sh
 

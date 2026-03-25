@@ -93,6 +93,44 @@ def ensure_modules_center(source: str) -> tuple[str, bool]:
 
     return source[:left] + block + source[right + 1 :], True
 
+def ensure_modules_right_tray(source: str) -> tuple[str, bool]:
+    left, right = find_array_bounds(source, '"modules-right"')
+    block = source[left:right + 1]
+
+    if '"tray"' in block:
+        return source, False
+
+    insertion = '    "tray",\n'
+    wifi_pos = block.find('"custom/wifi"')
+    battery_pos = block.find('"battery"')
+
+    if wifi_pos != -1:
+        line_end = block.find("\n", wifi_pos)
+        if line_end == -1:
+            line_end = len(block) - 1
+        block = block[: line_end + 1] + insertion + block[line_end + 1 :]
+    elif battery_pos != -1:
+        line_start = block.rfind("\n", 0, battery_pos)
+        if line_start == -1:
+            line_start = 0
+        block = block[: line_start + 1] + insertion + block[line_start + 1 :]
+    else:
+        close_pos = block.rfind("]")
+        if close_pos == -1:
+            raise SystemExit(f"Invalid modules-right block in {config_path}")
+
+        body = block[:close_pos]
+        scan = len(body) - 1
+        while scan >= 0 and body[scan].isspace():
+            scan -= 1
+
+        if scan >= 0 and body[scan] not in "[,":
+            body = body[: scan + 1] + "," + body[scan + 1 :]
+
+        block = body + insertion + block[close_pos:]
+
+    return source[:left] + block + source[right + 1 :], True
+
 def ensure_chat_module(source: str) -> tuple[str, bool]:
     if '"custom/chat-notifications": {' in source:
         return source, False
@@ -119,10 +157,37 @@ def ensure_chat_module(source: str) -> tuple[str, bool]:
     prefix += "\n"
     return prefix + module_block + source[final_brace:], True
 
-text, changed_center = ensure_modules_center(text)
-text, changed_module = ensure_chat_module(text)
+def ensure_tray_module(source: str) -> tuple[str, bool]:
+    if '"tray": {' in source:
+        return source, False
 
-if changed_center or changed_module:
+    module_block = (
+        '  "tray": {\n'
+        '    "icon-size": 14,\n'
+        '    "spacing": 8\n'
+        '  },\n'
+    )
+
+    anchor = source.find('  "battery": {')
+    if anchor != -1:
+        return source[:anchor] + module_block + source[anchor:], True
+
+    final_brace = source.rfind("}")
+    if final_brace == -1:
+        raise SystemExit(f"Invalid JSON object in {config_path}")
+
+    prefix = source[:final_brace].rstrip()
+    if not prefix.endswith(","):
+        prefix += ","
+    prefix += "\n"
+    return prefix + module_block + source[final_brace:], True
+
+text, changed_center = ensure_modules_center(text)
+text, changed_modules_right = ensure_modules_right_tray(text)
+text, changed_module = ensure_chat_module(text)
+text, changed_tray_module = ensure_tray_module(text)
+
+if changed_center or changed_modules_right or changed_module or changed_tray_module:
     config_path.write_text(text)
     print("Updated Waybar config.jsonc")
 else:
@@ -136,11 +201,7 @@ import sys
 style_path = Path(sys.argv[1])
 text = style_path.read_text()
 
-if "#custom-chat-notifications {" in text:
-    print("Waybar style.css already up to date")
-    raise SystemExit(0)
-
-style_block = (
+chat_block = (
     "\n#custom-chat-notifications {\n"
     "  min-width: 12px;\n"
     "  margin-left: 8px;\n"
@@ -150,21 +211,49 @@ style_block = (
     "}\n"
 )
 
+tray_hidden_block = (
+    "\n#tray {\n"
+    "    min-width: 0;\n"
+    "    padding: 0;\n"
+    "    margin: 0;\n"
+    "}\n"
+    "#tray > .passive,\n"
+    "#tray > .active,\n"
+    "#tray > .needs-attention {\n"
+    "    -gtk-icon-transform: scale(0);\n"
+    "    min-width: 0;\n"
+    "    min-height: 0;\n"
+    "    margin: 0;\n"
+    "    padding: 0;\n"
+    "    opacity: 0;\n"
+    "}\n"
+)
+
 clock_anchor = "#clock {"
 anchor_pos = text.find(clock_anchor)
+changed = False
 
-if anchor_pos != -1:
-    clock_end = text.find("}\n", anchor_pos)
-    if clock_end != -1:
-        insert_pos = clock_end + 2
-        text = text[:insert_pos] + style_block + text[insert_pos:]
+if "#custom-chat-notifications {" not in text:
+    if anchor_pos != -1:
+        clock_end = text.find("}\n", anchor_pos)
+        if clock_end != -1:
+            insert_pos = clock_end + 2
+            text = text[:insert_pos] + chat_block + text[insert_pos:]
+        else:
+            text = text.rstrip() + chat_block + "\n"
     else:
-        text = text.rstrip() + style_block + "\n"
-else:
-    text = text.rstrip() + style_block + "\n"
+        text = text.rstrip() + chat_block + "\n"
+    changed = True
 
-style_path.write_text(text)
-print("Updated Waybar style.css")
+if "#tray > .passive," not in text:
+    text = text.rstrip() + tray_hidden_block + "\n"
+    changed = True
+
+if changed:
+    style_path.write_text(text)
+    print("Updated Waybar style.css")
+else:
+    print("Waybar style.css already up to date")
 PY
 
 if command -v omarchy-restart-waybar >/dev/null 2>&1; then

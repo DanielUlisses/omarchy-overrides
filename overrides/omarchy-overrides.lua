@@ -2,6 +2,7 @@
 -- Chrome profiles: Default = personal, Profile 2 = pythian, Profile 3 = lanvera
 
 hl.env("GDK_SCALE", "1")
+hl.env("GDK_DPI_SCALE", "1.25")
 
 hl.monitor({ output = "DP-5",  mode = "1920x1080@75", position = "0x0",    scale = 1 })
 hl.monitor({ output = "DP-6",  mode = "1920x1080@75", position = "1920x0", scale = 1 })

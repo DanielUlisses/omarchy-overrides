@@ -2,34 +2,29 @@
 
 set -e
 
-HYPERLAND_CONFIG="$HOME/.config/hypr/hyprland.conf"
+HYPRLAND_CONFIG="$HOME/.config/hypr/hyprland.lua"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OVERRIDES_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-OVERRIDES_CONFIG="$OVERRIDES_DIR/overrides/omarchy-overrides.conf"
-SOURCE_LINE="source = $OVERRIDES_CONFIG"
+OVERRIDES_CONFIG="$OVERRIDES_DIR/overrides/omarchy-overrides.lua"
+SOURCE_LINE="dofile(\"$OVERRIDES_CONFIG\")"
 
-# Check if hyperland.conf exists
-if [ ! -f "$HYPERLAND_CONFIG" ]; then
-    echo "Hyperland configuration file not found at $HYPERLAND_CONFIG"
-    echo "Please ensure Hyperland is installed and configured."
+if [ ! -f "$HYPRLAND_CONFIG" ]; then
+    echo "Hyprland configuration file not found at $HYPRLAND_CONFIG"
+    echo "Please ensure Hyprland is installed and configured."
     exit 1
 fi
 
-# check if overides config exists
 if [ ! -f "$OVERRIDES_CONFIG" ]; then
     echo "Overrides configuration file not found at $OVERRIDES_CONFIG"
     echo "Please ensure the overrides file is present."
     exit 1
 fi
 
-# Check if the source line already exists in hyperland.conf
-if grep -Fxq "$SOURCE_LINE" "$HYPERLAND_CONFIG"; then
-    echo "Overrides already sourced in hyperland.conf"
+if grep -Fxq "$SOURCE_LINE" "$HYPRLAND_CONFIG"; then
+    echo "Overrides already sourced in hyprland.lua"
 else
-    # Append the source line to hyperland.conf
-    echo "" >> "$HYPERLAND_CONFIG"
-    echo "$SOURCE_LINE" >> "$HYPERLAND_CONFIG"
-    echo "Overrides sourced successfully in hyperland.conf"
+    printf '\n%s\n' "$SOURCE_LINE" >> "$HYPRLAND_CONFIG"
+    echo "Overrides sourced successfully in hyprland.lua"
 fi
 
-echo "Installation of Hyperland overrides completed."
+echo "Installation of Hyprland overrides completed."

@@ -32,6 +32,7 @@ hl.unbind("SUPER + SHIFT + C")
 hl.unbind("SUPER + SHIFT + E")
 hl.unbind("SUPER + SHIFT + G")
 hl.unbind("SUPER + SHIFT + M")
+hl.unbind("SUPER + SHIFT + S")
 hl.unbind("SUPER + SHIFT + W")
 hl.unbind("SUPER + SHIFT + Y")
 

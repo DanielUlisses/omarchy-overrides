@@ -12,6 +12,7 @@ set -euo pipefail
 . ./installations/install-chat-notifications.sh
 
 . ./installations/install-overrides.sh
+. ./installations/install-theme.sh
 
 . ./installations/global-uninstall.sh
 . ./bin/run-cmd-stow.sh

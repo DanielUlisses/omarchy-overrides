@@ -8,62 +8,15 @@ hl.monitor({ output = "DP-5", mode = "1920x1080@75", position = "0x0", scale = 1
 hl.monitor({ output = "DP-6", mode = "1920x1080@75", position = "1920x0", scale = 1 })
 hl.monitor({ output = "eDP-1", mode = "1920x1080@60", position = "3840x0", scale = 1 })
 
--- hl.workspace_rule({ workspace = "1", monitor = "DP-5",  default = true })
--- hl.workspace_rule({ workspace = "2", monitor = "DP-6",  default = true })
--- hl.workspace_rule({ workspace = "3", monitor = "eDP-1", default = true })
-
--- This configuration uses the split-monitor-workspaces plugin to create workspaces that span multiple monitors. The plugin must be installed and configured separately.
--- mkdir -p ~/.config/hypr/plugins
--- cd ~/.config/hypr/plugins
--- git clone https://github.com/zjeffer/split-monitor-workspaces
-
-package.path = package.path .. ";./?.lua;./?/init.lua"
-local smw = require("plugins.split-monitor-workspaces")
-
-smw.setup({
-	workspace_count = 5, -- This will create 10 persistent workspaces on each monitor at startup
-	monitor_priority = { "DP-5", "DP-6" }, -- This defines the order of monitors for workspace assignment
-	keep_focused = true,
-	enable_persistent_workspaces = true,
-	-- link_monitors = true,
-})
-
-hl.unbind("SUPER + 1")
-hl.unbind("SUPER + 2")
-hl.unbind("SUPER + 3")
-hl.unbind("SUPER + 4")
-hl.unbind("SUPER + 5")
-hl.unbind("SUPER + 6")
-hl.unbind("SUPER + 7")
-hl.unbind("SUPER + 8")
-hl.unbind("SUPER + 9")
-hl.unbind("SUPER + 0")
-
-hl.unbind("SUPER + SHIFT + 1")
-hl.unbind("SUPER + SHIFT + 2")
-hl.unbind("SUPER + SHIFT + 3")
-hl.unbind("SUPER + SHIFT + 4")
-hl.unbind("SUPER + SHIFT + 5")
-hl.unbind("SUPER + SHIFT + 6")
-hl.unbind("SUPER + SHIFT + 7")
-hl.unbind("SUPER + SHIFT + 8")
-hl.unbind("SUPER + SHIFT + 9")
-hl.unbind("SUPER + SHIFT + 0")
-
--- --- `get_amount_of_workspaces` is an easy helper function that simply returns the workspace_count you passed to the setup function.
-local mainMod = "SUPER"
-for i = 1, smw.get_amount_of_workspaces() do
-	local n = tostring(i)
-	local key = n == "10" and "0" or n -- SUPER+0 triggers workspace 10; pass "10" not "0" to avoid the wrap-around fallback hitting nonexistent workspace "0"
-	hl.bind(mainMod .. " +" .. key, smw.workspace(n))
-	hl.bind(mainMod .. " + SHIFT +" .. key, smw.move_to_workspace_silent(n))
-end
-
---- Relative workspace switching using workspace().
---- "+N" / "-N" jump N workspaces forward/backward from the currently active one.
---- Wrapping behaviour follows the enable_wrapping config option.
-hl.bind(mainMod .. " + PAGE_UP", smw.workspace("+1")) -- Next workspace (relative).
-hl.bind(mainMod .. " + PAGE_DOWN", smw.workspace("-1")) -- Previous workspace (relative).
+hl.workspace_rule({ workspace = "1", monitor = "DP-5",  default = true })
+hl.workspace_rule({ workspace = "2", monitor = "DP-5" })
+hl.workspace_rule({ workspace = "3", monitor = "DP-5" })
+hl.workspace_rule({ workspace = "4", monitor = "DP-5" })
+hl.workspace_rule({ workspace = "5", monitor = "DP-6",  default = true })
+hl.workspace_rule({ workspace = "6", monitor = "DP-6" })
+hl.workspace_rule({ workspace = "7", monitor = "DP-6" })
+hl.workspace_rule({ workspace = "8", monitor = "DP-6" })
+hl.workspace_rule({ workspace = "0", monitor = "eDP-1", default = true })
 
 -- Prevent Ghostty windows from stealing focus on activate
 hl.window_rule({

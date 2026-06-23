@@ -12,6 +12,6 @@ trap cleanup EXIT
 
 git clone --depth=1 "$REPO_URL" "$TMP_DIR"
 mkdir -p "$HOME/.config/waybar"
-cp -rf "$TMP_DIR/config/V3/." "$HOME/.config/waybar"
+cp -rf "$TMP_DIR/config/V6.d/." "$HOME/.config/waybar"
 
 omarchy-restart-waybar

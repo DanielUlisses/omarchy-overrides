@@ -8,11 +8,11 @@ hl.monitor({ output = "DP-5", mode = "1920x1080@75", position = "0x0", scale = 1
 hl.monitor({ output = "DP-6", mode = "1920x1080@75", position = "1920x0", scale = 1 })
 hl.monitor({ output = "eDP-1", mode = "1920x1080@60", position = "3840x0", scale = 1 })
 
-hl.workspace_rule({ workspace = "1", monitor = "DP-5",  default = true })
+hl.workspace_rule({ workspace = "1", monitor = "DP-5", default = true })
 hl.workspace_rule({ workspace = "2", monitor = "DP-5" })
 hl.workspace_rule({ workspace = "3", monitor = "DP-5" })
 hl.workspace_rule({ workspace = "4", monitor = "DP-5" })
-hl.workspace_rule({ workspace = "5", monitor = "DP-6",  default = true })
+hl.workspace_rule({ workspace = "5", monitor = "DP-6", default = true })
 hl.workspace_rule({ workspace = "6", monitor = "DP-6" })
 hl.workspace_rule({ workspace = "7", monitor = "DP-6" })
 hl.workspace_rule({ workspace = "8", monitor = "DP-6" })
@@ -26,8 +26,7 @@ hl.window_rule({
 })
 
 -- Application keybindings (overrides omarchy defaults)
-local desktop =
-	'uwsm app -- remmina -c "/home/daniel/.local/share/remmina/pythian_rdp_pythian-notebook_172-16-0-16.remmina"'
+local desktop = 'uwsm app -- remmina -c "/home/daniel/.local/share/remmina/group_rdp_pythian_172-16-0-16.remmina"'
 
 hl.unbind("SUPER + SHIFT + SLASH")
 hl.unbind("SUPER + SHIFT + A")

@@ -32,6 +32,7 @@ backup_if_needed() {
 backup_if_needed "${HOME}/.config/gh/config.yml"
 backup_if_needed "${HOME}/.config/git/ignore"
 backup_if_needed "${HOME}/.gitconfig"
+backup_if_needed "${HOME}/.bashrc"
 
 cd "${DOTFILES_REPO}"
 

@@ -9,7 +9,6 @@ set -euo pipefail
 . ./installations/install-vscode.sh
 . ./installations/install-keyd.sh
 . ./installations/install-waybar-configuration.sh
-. ./installations/install-chat-notifications.sh
 
 . ./installations/install-overrides.sh
 . ./installations/install-theme.sh

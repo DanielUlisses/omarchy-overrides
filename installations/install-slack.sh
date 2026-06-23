@@ -1,4 +1,5 @@
 #!/bin/sh
 
 echo "Installing Slack..."
-yay -Sc --answerclean All --noconfirm slack-desktop-wayland
+sudo rm -rf "$HOME/.cache/yay/slack-desktop-wayland"
+yay -S --noconfirm slack-desktop-wayland

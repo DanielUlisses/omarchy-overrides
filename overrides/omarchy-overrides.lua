@@ -1,5 +1,5 @@
 -- Monitor configuration
--- Chrome profiles: Default = personal, Profile 2 = pythian, Profile 3 = lanvera
+-- Chrome profiles: Default = personal, Profile 1 = pythian, Profile 2 = lanvera
 
 hl.env("GDK_SCALE", "1")
 hl.env("GDK_DPI_SCALE", "1.25")
@@ -48,7 +48,7 @@ o.bind("SUPER + SHIFT + BACKSLASH", "Passwords", "uwsm app -- 1password --quick-
 o.bind("SUPER + BACKSLASH", "1Password", "uwsm app -- 1password")
 o.bind("SUPER + SHIFT + Y", "YouTube", 'omarchy-launch-webapp "https://youtube.com/" --profile-directory="Default"')
 o.bind("SUPER + SHIFT + R", "Pythian Notebook", desktop)
-o.bind("SUPER + SHIFT + M", "Meet", 'omarchy-launch-webapp "https://meet.google.com/" --profile-directory="Profile 2"')
+o.bind("SUPER + SHIFT + M", "Meet", 'omarchy-launch-webapp "https://meet.google.com/" --profile-directory="Profile 1"')
 o.bind("SUPER + SHIFT + T", "Teams", "uwsm app -- teams-for-linux")
 o.bind(
 	"SUPER + SHIFT + ALT + T",
@@ -74,10 +74,10 @@ o.bind(
 o.bind(
 	"SUPER + SHIFT + G",
 	"Gemini Enterprise",
-	'omarchy-launch-webapp "https://vertexaisearch.cloud.google.com/home/cid/a72e70f2-3125-4270-916e-2c345f90d694" --profile-directory="Profile 2"'
+	'omarchy-launch-webapp "https://vertexaisearch.cloud.google.com/home/cid/a72e70f2-3125-4270-916e-2c345f90d694" --profile-directory="Profile 1"'
 )
 o.bind(
 	"SUPER + SHIFT + L",
 	"Lanvera Desktop",
-	'omarchy-launch-webapp "https://windows.cloud.microsoft/webclient/avd/69350a1c-2543-4664-8ea9-d3850d5b2216/4b4019bc-77c4-408a-e788-08dbde32b101?endpointId=d136289c-954b-4134-92f0-ed117198fdbd#loginHint=TE.DU0816%40Lanvera.org" --profile-directory="Profile 3"'
+	'omarchy-launch-webapp "https://windows.cloud.microsoft/webclient/avd/69350a1c-2543-4664-8ea9-d3850d5b2216/4b4019bc-77c4-408a-e788-08dbde32b101?endpointId=d136289c-954b-4134-92f0-ed117198fdbd#loginHint=TE.DU0816%40Lanvera.org" --profile-directory="Profile 2"'
 )

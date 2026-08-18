@@ -76,6 +76,7 @@ o.bind(
 	"Gemini Enterprise",
 	'omarchy-launch-webapp "https://vertexaisearch.cloud.google.com/home/cid/a72e70f2-3125-4270-916e-2c345f90d694" --profile-directory="Profile 1"'
 )
+o.bind("SUPER + CTRL + M", "Next Event", "omarchy-shell shell toggle tobiasz-p.next-event")
 o.bind(
 	"SUPER + SHIFT + L",
 	"Lanvera Desktop",

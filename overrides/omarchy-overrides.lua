@@ -41,7 +41,7 @@ hl.unbind("SUPER + SHIFT + S")
 hl.unbind("SUPER + SHIFT + W")
 hl.unbind("SUPER + SHIFT + Y")
 
-o.bind("SUPER + SHIFT + B", "Browser", 'omarchy-launch-browser --profile-directory="Default"')
+o.bind("SUPER + SHIFT + B", "Browser", 'uwsm app -- google-chrome-stable --profile-directory="Default"')
 o.bind("SUPER + E", "Editor", { omarchy = "editor" })
 o.bind("SUPER + SHIFT + E", "Email", "uwsm app -- thunderbird")
 o.bind("SUPER + SHIFT + BACKSLASH", "Passwords", "uwsm app -- 1password --quick-access")

@@ -1,14 +1,25 @@
 #!/bin/bash
 # Per-client context switcher for Omarchy Quattro (Hyprland 0.56+).
 #
-#   omarchy-context switch <1-4>   move DP-5 + DP-6 to that context (repeat = toggle DP-5 layer)
+#   omarchy-context switch <1-4>   move DP-5 + DP-6 to that context (repeat = next DP-5 row)
 #   omarchy-context launch <1-4>   idempotently start that context's apps, then switch
 #   omarchy-context quit   <1-4>   close that context's windows
-#   omarchy-context toggle         toggle DP-5 comms <-> cloud for the current context
+#   omarchy-context toggle         advance the current context's DP-5 row
 #   omarchy-context focus          fullscreen current window + toggle notification silencing
 #   omarchy-context notes          omawrite overlay on special:notes
 #
-# Workspaces: DP-6 = 1..4 (dev), DP-5 = 21..24 (comms) / 31..33 (cloud PC), eDP-1 = 10 (never touched).
+# Workspaces: DP-6 = 1..4 (dev), eDP-1 = 10 (never touched), and DP-5 = one app per
+# workspace in three rows, because DP-5 is portrait now and two tiled windows on a
+# 1080-wide panel are unusable:
+#
+#              ctx 1 Pythian   ctx 2 Lanvera   ctx 3 BSS        ctx 4 Personal
+#   2n browser 21 chrome       22 chrome       23 chrome        24 chrome
+#   3n chat    31 slack        32 teams        33 teams (BSS)   34 chrome (admin)
+#   4n cloudpc 41 remmina      42 avd          43 avd           --
+#
+# SUPER+F<n> lands on that context's 2n and each repeat walks to the next row it
+# actually uses, wrapping. Rows with no wired app (ctx 4 has no cloud PC, ctx 3's AVD
+# URL may be unset) drop out of the cycle on their own -- see rows().
 # Placement is owned by the window rules in overrides/omarchy-overrides.lua, except for
 # Chrome windows -- see is_chrome() below for why those have to be placed here.
 set -u
@@ -25,26 +36,26 @@ LANVERA_AVD='https://windows.cloud.microsoft/webclient/avd/69350a1c-2543-4664-8e
 apps() {
   case "$1" in
   1) cat <<EOF
-slack	21	uwsm app -- slack --enable-features=UseOzonePlatform --ozone-platform=wayland
 chrome-pythian	21	$CHROME --profile-directory="Profile 1" --class=chrome-pythian
-org.remmina.Remmina	31	uwsm app -- remmina -c "/home/daniel/.local/share/remmina/group_rdp_pythian_172-16-0-16.remmina"
+slack	31	uwsm app -- slack --enable-features=UseOzonePlatform --ozone-platform=wayland
+org.remmina.Remmina	41	uwsm app -- remmina -c "/home/daniel/.local/share/remmina/group_rdp_pythian_172-16-0-16.remmina"
 EOF
     ;;
   2) cat <<EOF
-teams-for-linux	22	uwsm app -- teams-for-linux
 chrome-lanvera	22	$CHROME --profile-directory="Profile 2" --class=chrome-lanvera
-chrome-cloudpc-lanvera	32	omarchy-launch-webapp "$LANVERA_AVD" --profile-directory="Profile 2"
+teams-for-linux	32	uwsm app -- teams-for-linux
+chrome-cloudpc-lanvera	42	omarchy-launch-webapp "$LANVERA_AVD" --profile-directory="Profile 2"
 EOF
     ;;
   3) cat <<EOF
-teams-personal	23	uwsm app -- teams-for-linux --class=teams-personal --user-data-dir="/home/daniel/.config/teams-personal"
 chrome-bss	23	$CHROME --profile-directory="Profile 3" --class=chrome-bss
-chrome-cloudpc-bss	33	${BSS_AVD:+omarchy-launch-webapp "$BSS_AVD" --profile-directory="Profile 3"}
+teams-personal	33	uwsm app -- teams-for-linux --class=teams-personal --user-data-dir="/home/daniel/.config/teams-personal"
+chrome-cloudpc-bss	43	${BSS_AVD:+omarchy-launch-webapp "$BSS_AVD" --profile-directory="Profile 3"}
 EOF
     ;;
   4) cat <<EOF
 chrome-personal	24	$CHROME --profile-directory="Default" --class=chrome-personal
-chrome-admin	24	$CHROME --profile-directory="Profile 4" --class=chrome-admin
+chrome-admin	34	$CHROME --profile-directory="Profile 4" --class=chrome-admin
 EOF
     ;;
   esac
@@ -57,30 +68,39 @@ is_chrome() { case "$1" in chrome-*) return 0 ;; *) return 1 ;; esac; }
 chrome_on_ws() { hyprctl clients -j | jq --arg w "$1" '[.[]|select(.workspace.name==$w and (.class|startswith("chrome-")))]|length'; }
 chrome_wanted() { apps "$1" | awk -F'\t' -v w="$2" '$1 ~ /^chrome-/ && $2 == w && $3 != "" {n++} END {print n+0}'; }
 
-# Highest cloud-PC context. 4 (Personal) has none, so its F-key never toggles a layer.
-CLOUD_MAX=3
-
 active_ws() { hyprctl monitors -j | jq -r --arg m "$1" '.[]|select(.name==$m)|.activeWorkspace.name'; }
 running() { hyprctl clients -j | jq -e --arg c "$1" 'any(.[]; .class==$c)' >/dev/null; }
 go() { hyprctl dispatch "hl.dsp.focus({ workspace = \"$1\" })" >/dev/null; }
 
 # Which context are we in? DP-6 is authoritative; fall back to DP-5, then Pythian.
+# Every DP-5 workspace is <row><context>, so the context is always the second digit.
 current() {
   case "$(active_ws $DEV)" in 1 | 2 | 3 | 4) active_ws $DEV; return ;; esac
   case "$(active_ws $COMMS)" in
-  2[1-4] | 3[1-3]) active_ws $COMMS | cut -c2 ;;
+  [234][1-4]) active_ws $COMMS | cut -c2 ;;
   *) echo 1 ;;
   esac
 }
 
-# DP-5 target: comms (2n), unless we are already sitting on it, in which case flip to cloud (3n).
-comms_target() {
-  if [ "$(active_ws $COMMS)" = "2$1" ] && [ "$1" -le "$CLOUD_MAX" ]; then echo "3$1"; else echo "2$1"; fi
+# The DP-5 rows this context actually uses, in cycle order. Reading them back out of
+# apps() is what keeps the cycle honest: an entry with an empty command (the BSS cloud
+# PC before its URL is set) is skipped here exactly as launch() skips it.
+rows() { apps "$1" | awk -F'\t' '$3 != "" { print $2 }' | sort -nu; }
+
+# Next DP-5 row: the one after whatever is showing, wrapping at the end. Landing from
+# anywhere else -- another context, the dev monitor, a stray workspace -- starts at 2n.
+next_row() {
+  rows "$1" | awk -v cur="$(active_ws $COMMS)" '
+    { row[NR] = $0; if ($0 == cur) at = NR }
+    END { if (NR) print (at == 0 || at == NR) ? row[1] : row[at + 1] }
+  '
 }
 
 switch() {
-  go "$(comms_target "$1")" # DP-5 first...
-  go "$1"                   # ...so focus ends on the dev monitor.
+  local ws
+  ws=$(next_row "$1")
+  [ -n "$ws" ] && go "$ws" # DP-5 first...
+  go "$1"                  # ...so focus ends on the dev monitor.
 }
 
 # hl.dsp.window.move has no `match`, so park = focus the window, then move the focused one.
@@ -127,7 +147,7 @@ launch() {
       sleep 0.8 # stagger: simultaneous Electron/RDP window mapping misplaces windows
     fi
   done < <(apps "$1")
-  go "2$1" # launching always lands on comms, never flips to the cloud layer
+  go "$(rows "$1" | head -1)" # launching always lands on the browser row, never mid-cycle
   go "$1"
 }
 
@@ -168,13 +188,21 @@ notes)
     [ "$(apps $n | wc -l)" -ge 2 ] || { echo "FAIL: context $n has no apps"; exit 1; }
     apps $n | awk -F'\t' 'NF!=3 { exit 1 }' || { echo "FAIL: context $n has a malformed app line"; exit 1; }
   done
+  for n in 1 2 3 4; do
+    [ "$(rows $n | wc -l)" = "$(rows $n | sort -u | wc -l)" ] || { echo "FAIL: context $n reuses a workspace"; exit 1; }
+    [ "$(rows $n | cut -c2 | sort -u)" = "$n" ] || { echo "FAIL: context $n has a row on the wrong context digit"; exit 1; }
+  done
   hyprctl() { echo '[{"name":"DP-5","activeWorkspace":{"name":"'"$FAKE_WS"'"}}]'; }
-  FAKE_WS=1 && [ "$(comms_target 2)" = 22 ] || { echo "FAIL: cold switch should go to comms"; exit 1; }
-  FAKE_WS=22 && [ "$(comms_target 2)" = 32 ] || { echo "FAIL: repeat press should flip to cloud"; exit 1; }
-  FAKE_WS=32 && [ "$(comms_target 2)" = 22 ] || { echo "FAIL: cloud should flip back to comms"; exit 1; }
-  FAKE_WS=24 && [ "$(comms_target 4)" = 24 ] || { echo "FAIL: Personal has no cloud layer"; exit 1; }
-  [ "$(chrome_wanted 4 24)" = 2 ] || { echo "FAIL: Personal should want 2 Chrome windows on 24"; exit 1; }
-  [ "$(chrome_wanted 3 33)" = "$([ -n "$BSS_AVD" ] && echo 1 || echo 0)" ] || { echo "FAIL: unwired BSS cloud PC should not be counted"; exit 1; }
+  FAKE_WS=1 && [ "$(next_row 2)" = 22 ] || { echo "FAIL: cold switch should start at the browser row"; exit 1; }
+  FAKE_WS=22 && [ "$(next_row 2)" = 32 ] || { echo "FAIL: browser row should advance to chat"; exit 1; }
+  FAKE_WS=32 && [ "$(next_row 2)" = 42 ] || { echo "FAIL: chat row should advance to the cloud PC"; exit 1; }
+  FAKE_WS=42 && [ "$(next_row 2)" = 22 ] || { echo "FAIL: last row should wrap to the browser row"; exit 1; }
+  FAKE_WS=21 && [ "$(next_row 2)" = 22 ] || { echo "FAIL: another context's row should not be a cycle position"; exit 1; }
+  FAKE_WS=24 && [ "$(next_row 4)" = 34 ] || { echo "FAIL: Personal should advance to its admin browser"; exit 1; }
+  FAKE_WS=34 && [ "$(next_row 4)" = 24 ] || { echo "FAIL: Personal has no cloud PC row to stop on"; exit 1; }
+  FAKE_WS=33 && [ "$(next_row 3)" = "$([ -n "$BSS_AVD" ] && echo 43 || echo 23)" ] || { echo "FAIL: unwired BSS cloud PC should drop out of the cycle"; exit 1; }
+  [ "$(chrome_wanted 4 24)" = 1 ] || { echo "FAIL: Personal should want 1 Chrome window on 24"; exit 1; }
+  [ "$(chrome_wanted 3 43)" = "$([ -n "$BSS_AVD" ] && echo 1 || echo 0)" ] || { echo "FAIL: unwired BSS cloud PC should not be counted"; exit 1; }
   echo "ok"
   ;;
 *)

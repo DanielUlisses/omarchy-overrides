@@ -7,8 +7,12 @@ set -euo pipefail
 # The -git builds match what bin/omarchy-context was tuned against. `pacman -Q` also
 # matches providers, so a machine that already has the repo remmina/freerdp keeps them
 # instead of hitting a package conflict under --noconfirm.
+#
+# freerdp-git is commented out: it fails to build on a fresh Omarchy install (AUR build
+# error). remmina-git pulls in a working freerdp as a dependency anyway, so this is safe
+# to skip.
 echo "Installing Remmina..."
-pacman -Q freerdp >/dev/null 2>&1 || yay -S --noconfirm freerdp-git
+#pacman -Q freerdp >/dev/null 2>&1 || yay -S --noconfirm freerdp-git
 pacman -Q remmina >/dev/null 2>&1 || yay -S --noconfirm remmina-git
 
 echo "Installing Solaar..."

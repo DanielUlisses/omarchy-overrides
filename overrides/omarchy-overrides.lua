@@ -49,6 +49,13 @@ hl.env("__GLX_VENDOR_LIBRARY_NAME", "mesa")
 -- (SUPER+F9) is for -- that one is about silencing notifications.
 hl.config({ misc = { focus_on_activate = false } })
 
+-- Omarchy's default (looknfeel.lua) warps the cursor to the newly focused window on
+-- every workspace change. That fights the SUPER+F<n> context switcher: repeated
+-- presses walk DP-5 through its rows and hop DP-6, yanking the mouse off whatever
+-- monitor it was actually sitting on each time. Disable the warp so the cursor stays
+-- put and only keyboard focus moves.
+hl.config({ cursor = { warp_on_change_workspace = 0 } })
+
 -- Prevent Ghostty windows from stealing focus on activate
 hl.window_rule({
 	match = { class = "com.mitchellh.ghostty" },

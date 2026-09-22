@@ -96,11 +96,26 @@ next_row() {
   '
 }
 
-switch() {
+# Advance DP-5 to its next row and actually focus it there -- go() grabs real keyboard
+# focus (verified: it moves the input target even when the cursor sits elsewhere), so
+# this alone is enough for actions that are only about DP-5.
+advance_row() {
   local ws
   ws=$(next_row "$1")
-  [ -n "$ws" ] && go "$ws" # DP-5 first...
-  go "$1"                  # ...so focus ends on the dev monitor.
+  [ -n "$ws" ] && go "$ws"
+}
+
+# Context switch: advance DP-5, then land focus on the dev monitor too -- but only when
+# this actually changes context. DP-6's *active workspace* already reads "$1" on a
+# repeat SUPER+F<n> press (same context, just cycling the DP-5 row), yet DP-6 might not
+# hold real keyboard focus (you could've been typing into DP-5 the whole time) -- so an
+# unconditional go("$1") would silently steal focus back to DP-6 on every repeat, the
+# same bug toggle had. Only a genuine cross-context jump earns the DP-6 focus move.
+switch() {
+  local was
+  was=$(current)
+  advance_row "$1"
+  [ "$1" = "$was" ] || go "$1"
 }
 
 # hl.dsp.window.move has no `match`, so park = focus the window, then move the focused one.
@@ -170,7 +185,7 @@ case "${1:-}" in
 switch) switch "$2" ;;
 launch) launch "$2" ;;
 quit) quit "${2:-$(current)}" ;;
-toggle) switch "$(current)" ;;
+toggle) advance_row "$(current)" ;;
 focus)
   hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = "fullscreen" })' >/dev/null
   # ponytail: two independent states (per-window fullscreen, global DND flag). Pressing

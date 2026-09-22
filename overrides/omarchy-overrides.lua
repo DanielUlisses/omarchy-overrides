@@ -52,9 +52,25 @@ hl.config({ misc = { focus_on_activate = false } })
 -- Omarchy's default (looknfeel.lua) warps the cursor to the newly focused window on
 -- every workspace change. That fights the SUPER+F<n> context switcher: repeated
 -- presses walk DP-5 through its rows and hop DP-6, yanking the mouse off whatever
--- monitor it was actually sitting on each time. Disable the warp so the cursor stays
--- put and only keyboard focus moves.
-hl.config({ cursor = { warp_on_change_workspace = 0 } })
+-- monitor it was actually sitting on each time. warp_on_change_workspace=0 only kills
+-- the "move to last focused window" warp though -- Hyprland separately re-centers the
+-- cursor onto a monitor whenever it becomes active (e.g. bin/omarchy-context's
+-- `switch` ends every SUPER+F<n> press with `go(dev-workspace)` to land keyboard focus
+-- on DP-6), and that one is gated by no_warps instead. Both have to be off.
+hl.config({ cursor = { warp_on_change_workspace = 0, no_warps = true } })
+
+-- Omarchy's default SUPER+scroll (mouse_down/mouse_up) binds use "e+1"/"e-1", which
+-- cycles the single global, ID-sorted list of every currently open workspace -- not
+-- the workspaces on whichever monitor the mouse is over. DP-5's row workspaces
+-- (21..43) sit in that list right next to DP-6's (1..4) and eDP-1's (10), so scrolling
+-- past DP-5's first/last open workspace (e.g. past Slack on 31) walks straight onto
+-- DP-6 or eDP-1 instead of wrapping within DP-5. "m+1"/"m-1" is the monitor-scoped
+-- equivalent: it only cycles workspaces on the currently focused monitor, so with
+-- follow_mouse (default) it stays on whichever monitor the cursor is actually over.
+hl.unbind("SUPER + mouse_down")
+hl.unbind("SUPER + mouse_up")
+o.bind("SUPER + mouse_down", "Scroll active workspace forward", hl.dsp.focus({ workspace = "m+1" }))
+o.bind("SUPER + mouse_up", "Scroll active workspace backward", hl.dsp.focus({ workspace = "m-1" }))
 
 -- Prevent Ghostty windows from stealing focus on activate
 hl.window_rule({

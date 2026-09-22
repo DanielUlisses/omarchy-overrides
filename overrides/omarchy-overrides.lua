@@ -107,6 +107,11 @@ o.bind(
 	"Gemini Enterprise",
 	'omarchy-launch-webapp "https://vertexaisearch.cloud.google.com/home/cid/a72e70f2-3125-4270-916e-2c345f90d694" --profile-directory="Profile 1"'
 )
+o.bind(
+	"SUPER + SHIFT + H",
+	"Tempo",
+	'omarchy-launch-webapp "https://pythian.atlassian.net/jira/apps/fa75e928-007a-4af4-9530-76503bcd4cba/ea7fda46-2015-4367-bd93-992fbf0c58ca/my-work/week?type=LIST" --profile-directory="Profile 1"'
+)
 o.bind("SUPER + CTRL + M", "Next Event", "omarchy-shell shell toggle tobiasz-p.next-event")
 o.bind(
 	"SUPER + SHIFT + L",

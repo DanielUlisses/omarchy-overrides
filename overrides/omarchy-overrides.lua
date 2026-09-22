@@ -25,7 +25,13 @@ hl.env("__GLX_VENDOR_LIBRARY_NAME", "mesa")
 --              ctx 1 Pythian   ctx 2 Lanvera   ctx 3 BSS        ctx 4 Personal
 --   2n browser 21 chrome       22 chrome       23 chrome        24 chrome
 --   3n chat    31 slack        32 teams        33 teams (BSS)   34 chrome (admin)
---   4n cloudpc 41 remmina      42 avd          43 avd           --
+--   4n cloudpc 41 freerdp      42 avd (chrome) 43 freerdp       44 remmina
+--
+-- 4n is native FreeRDP now except Lanvera: 41 is the F5-reached Windows 365 Cloud PC
+-- and 43 is BSS, both via bin/omarchy-cloudpc. 44 holds the 172.16.0.16 box on
+-- Remmina, moved off Pythian because it is becoming personal. NOTE: hyprmoncfg has no
+-- rule for 44 yet (it generates 21-24, 31-34, 41-43), so 44 opens on whichever monitor
+-- has focus until one is added to its profile.
 --
 -- Workspaces 5..9 are deliberately unruled and open on the focused monitor.
 --
@@ -59,6 +65,28 @@ hl.config({ misc = { focus_on_activate = false } })
 -- on DP-6), and that one is gated by no_warps instead. Both have to be off.
 hl.config({ cursor = { warp_on_change_workspace = 0, no_warps = true } })
 
+-- Drop shift:both_capslock_cancel from Omarchy's default kb_options
+-- ("compose:caps,shift:both_capslock_cancel", default/hypr/input.lua). That option gives
+-- both Shift keys a second-level Caps_Lock keysym so the pair toggles Caps Lock and a
+-- single Shift cancels it. The AVD web client (Lanvera/BSS cloud PCs, SUPER+SHIFT+L)
+-- mishandles the resulting Left Shift events: it forwards the press but never the release,
+-- so Shift stays physically held on the remote Windows host -- visible on the remote's
+-- on-screen keyboard -- until the local window loses focus and the client's blur handler
+-- releases every key. Right Shift is unaffected, which is why this reads as a stuck
+-- Left Shift rather than a dead keyboard.
+--
+-- Verified 2026-09-22 that nothing local is at fault before landing this: no Hyprland bind
+-- is keyed on Shift_L (246 binds), the keymap compiles symmetrically for <LFSH>/<RTSH>,
+-- it reproduces with omarchy-fcitx5.service stopped, a plain page in the same Chrome
+-- profile logs matched keydown/keyup for both Shift keys, and it reproduces windowed and
+-- in browser fullscreen alike. Keep Compose on Caps Lock; only the shift half goes.
+-- Cost of dropping it: both-Shift no longer toggles Caps Lock.
+hl.config({
+	input = {
+		kb_options = "compose:caps",
+	},
+})
+
 -- Omarchy's default SUPER+scroll (mouse_down/mouse_up) binds use "e+1"/"e-1", which
 -- cycles the single global, ID-sorted list of every currently open workspace -- not
 -- the workspaces on whichever monitor the mouse is over. DP-5's row workspaces
@@ -80,7 +108,9 @@ hl.window_rule({
 })
 
 -- Application keybindings (overrides omarchy defaults)
-local desktop = 'uwsm app -- remmina -c "/home/daniel/.local/share/remmina/group_rdp_pythian_172-16-0-16.remmina"'
+local cloudpc = "/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-cloudpc"
+-- The 172.16.0.16 box is the only thing left on Remmina and is becoming personal.
+local remmina_box = 'uwsm app -- remmina -c "/home/daniel/.local/share/remmina/group_rdp_pythian_172-16-0-16.remmina"'
 
 hl.unbind("SUPER + SHIFT + SLASH")
 hl.unbind("SUPER + SHIFT + A")
@@ -101,7 +131,11 @@ o.bind("SUPER + SHIFT + E", "Email", "omarchy shell shell toggle omamail '{}'")
 o.bind("SUPER + SHIFT + BACKSLASH", "Passwords", "uwsm app -- 1password --quick-access")
 o.bind("SUPER + BACKSLASH", "1Password", "uwsm app -- 1password")
 o.bind("SUPER + SHIFT + Y", "YouTube", 'omarchy-launch-webapp "https://youtube.com/" --profile-directory="Default"')
-o.bind("SUPER + SHIFT + R", "Pythian Notebook", desktop)
+-- Cloud PCs, native FreeRDP via bin/omarchy-cloudpc. Each connect costs two browser
+-- logins (gateway token, then per-host token); FreeRDP does not cache them.
+o.bind("SUPER + SHIFT + R", "Pythian Cloud PC", cloudpc .. " pythian")
+o.bind("SUPER + SHIFT + ALT + R", "BSS Cloud PC", cloudpc .. " bss")
+o.bind("SUPER + SHIFT + CTRL + R", "Remote desktop 172.16.0.16", remmina_box)
 o.bind("SUPER + SHIFT + M", "Meet", 'omarchy-launch-webapp "https://meet.google.com/" --profile-directory="Profile 1"')
 o.bind("SUPER + SHIFT + T", "Teams", "uwsm app -- teams-for-linux")
 o.bind(
@@ -169,16 +203,23 @@ place("chromium", 10)
 -- whichever profile started the process -- a rule on chrome-pythian would swallow the
 -- Lanvera and Personal windows too. bin/omarchy-context places them instead.
 
--- Cloud PCs run windowed, so SUPER combos keep reaching Hyprland. Remmina holds the
--- Pythian RDP credentials and there is only one session, so its class is already
--- unique per client -- no xfreerdp/wm-class juggling needed. This catches Remmina's
--- connection manager as well as the session; both belong on the Pythian cloud layer.
-place("org.remmina.Remmina", 41)
--- Tiled, not floated. Remmina has workspace 41 to itself now, so the old centred
--- 1600x900 float just wasted a portrait panel.
+-- Cloud PC row (4n). Native FreeRDP sessions, launched by bin/omarchy-cloudpc, which
+-- forces SDL_APP_ID=cloudpc-<client> so each one gets its own stable app_id. That is
+-- what makes plain class rules work here -- unlike the chrome-* windows below, which
+-- share a process and have to be placed by script.
+place("cloudpc-pythian", 41) -- Windows 365 Cloud PC reached via F5
+place("cloudpc-bss", 43)
+-- Lanvera (42) is still the Chrome AVD web client: its host pool omits
+-- enablerdsaadauth:i:1, so FreeRDP cannot authenticate to the session host. It is
+-- placed by the script, like the client browsers.
+
+-- Remmina now only holds the 172.16.0.16 box, which is moving to personal use, so it
+-- sits on the Personal column rather than Pythian's. This catches the connection
+-- manager as well as the session.
+place("org.remmina.Remmina", 44)
+-- Tiled, not floated -- it has the workspace to itself, so the old centred 1600x900
+-- float just wasted a portrait panel.
 o.window("^(org.remmina.Remmina)$", { float = false })
--- Lanvera and BSS cloud PCs are AVD web clients in Chrome app mode, so they are
--- placed by the script for the same reason the client browsers are.
 
 o.window("^(omawrite)$", {
 	workspace = "special:notes silent",

@@ -15,7 +15,7 @@
 #              ctx 1 Pythian   ctx 2 Lanvera   ctx 3 BSS        ctx 4 Personal
 #   2n browser 21 chrome       22 chrome       23 chrome        24 chrome
 #   3n chat    31 slack        32 teams        33 teams (BSS)   34 chrome (admin)
-#   4n cloudpc 41 remmina      42 avd          43 avd           --
+#   4n cloudpc 41 freerdp      42 avd (chrome) 43 freerdp       44 remmina
 #
 # SUPER+F<n> lands on that context's 2n and each repeat walks to the next row it
 # actually uses, wrapping. Rows with no wired app (ctx 4 has no cloud PC, ctx 3's AVD
@@ -28,8 +28,10 @@ DEV=DP-6
 COMMS=DP-5
 
 CHROME='uwsm app -- google-chrome-stable'
-# Cloud PC AVD web clients.
-BSS_AVD='https://windows.cloud.microsoft/webclient/avd/21b5393e-0ca5-4788-9ad2-3dafc22b0377/a026d301-402a-4b1d-d40a-08d8386745f7#loginHint=daniel.Ulisses.external%40Beiersdorf.com'
+CLOUDPC='/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-cloudpc'
+# Lanvera's cloud PC is still the Chrome web client: its host pool omits
+# enablerdsaadauth:i:1, so native FreeRDP cannot authenticate to the session host.
+# BSS moved to $CLOUDPC -- see bin/omarchy-cloudpc.
 LANVERA_AVD='https://windows.cloud.microsoft/webclient/avd/69350a1c-2543-4664-8ea9-d3850d5b2216/4b4019bc-77c4-408a-e788-08dbde32b101?endpointId=d136289c-954b-4134-92f0-ed117198fdbd#loginHint=TE.DU0816%40Lanvera.org'
 
 # window class <TAB> workspace <TAB> launch command, one line per app.
@@ -38,7 +40,7 @@ apps() {
   1) cat <<EOF
 chrome-pythian	21	$CHROME --profile-directory="Profile 1" --class=chrome-pythian
 slack	31	uwsm app -- slack --enable-features=UseOzonePlatform --ozone-platform=wayland
-org.remmina.Remmina	41	uwsm app -- remmina -c "/home/daniel/.local/share/remmina/group_rdp_pythian_172-16-0-16.remmina"
+cloudpc-pythian	41	$CLOUDPC pythian
 EOF
     ;;
   2) cat <<EOF
@@ -50,12 +52,13 @@ EOF
   3) cat <<EOF
 chrome-bss	23	$CHROME --profile-directory="Profile 3" --class=chrome-bss
 teams-personal	33	uwsm app -- teams-for-linux --class=teams-personal --user-data-dir="/home/daniel/.config/teams-personal"
-chrome-cloudpc-bss	43	${BSS_AVD:+omarchy-launch-webapp "$BSS_AVD" --profile-directory="Profile 3"}
+cloudpc-bss	43	$CLOUDPC bss
 EOF
     ;;
   4) cat <<EOF
 chrome-personal	24	$CHROME --profile-directory="Default" --class=chrome-personal
 chrome-admin	34	$CHROME --profile-directory="Profile 4" --class=chrome-admin
+org.remmina.Remmina	44	uwsm app -- remmina -c "/home/daniel/.local/share/remmina/group_rdp_pythian_172-16-0-16.remmina"
 EOF
     ;;
   esac
@@ -214,10 +217,11 @@ notes)
   FAKE_WS=42 && [ "$(next_row 2)" = 22 ] || { echo "FAIL: last row should wrap to the browser row"; exit 1; }
   FAKE_WS=21 && [ "$(next_row 2)" = 22 ] || { echo "FAIL: another context's row should not be a cycle position"; exit 1; }
   FAKE_WS=24 && [ "$(next_row 4)" = 34 ] || { echo "FAIL: Personal should advance to its admin browser"; exit 1; }
-  FAKE_WS=34 && [ "$(next_row 4)" = 24 ] || { echo "FAIL: Personal has no cloud PC row to stop on"; exit 1; }
-  FAKE_WS=33 && [ "$(next_row 3)" = "$([ -n "$BSS_AVD" ] && echo 43 || echo 23)" ] || { echo "FAIL: unwired BSS cloud PC should drop out of the cycle"; exit 1; }
+  FAKE_WS=34 && [ "$(next_row 4)" = 44 ] || { echo "FAIL: Personal admin browser should advance to its Remmina row"; exit 1; }
+  FAKE_WS=44 && [ "$(next_row 4)" = 24 ] || { echo "FAIL: Personal cloud PC row should wrap to the browser row"; exit 1; }
+  FAKE_WS=33 && [ "$(next_row 3)" = 43 ] || { echo "FAIL: chat row should advance to the BSS cloud PC"; exit 1; }
   [ "$(chrome_wanted 4 24)" = 1 ] || { echo "FAIL: Personal should want 1 Chrome window on 24"; exit 1; }
-  [ "$(chrome_wanted 3 43)" = "$([ -n "$BSS_AVD" ] && echo 1 || echo 0)" ] || { echo "FAIL: unwired BSS cloud PC should not be counted"; exit 1; }
+  [ "$(chrome_wanted 3 43)" = 0 ] || { echo "FAIL: the BSS cloud PC is native FreeRDP now, not a Chrome window"; exit 1; }
   echo "ok"
   ;;
 *)

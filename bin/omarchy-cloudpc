@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+#
+# Connect to a cloud PC with native FreeRDP instead of the Chrome web client.
+#
+#   omarchy-cloudpc bss
+#
+# Reads ~/.local/share/avd/<client>.rdp. Those files carry tenant ids, an armpath and
+# a Microsoft signature, so they stay out of this repo -- download one per resource from
+# the Windows App web client ("Download .rdp" on the desktop tile) and drop it there.
+#
+# Why native FreeRDP: a Chrome renderer plus GPU process per cloud PC is the single
+# largest memory consumer in a full four-context session.
+#
+# The window class is forced via SDL_APP_ID so each client gets its own stable app_id
+# (cloudpc-bss, cloudpc-pythian, ...). Without it SDL picks its own and every cloud PC
+# would share one class, which is the same trap chrome-* falls into -- see the note in
+# omarchy-context about why chrome windows have to be placed by script.
+#
+# Known limitation: connecting costs TWO browser logins, one for the gateway token and
+# one for the per-host AVD access token. FreeRDP does not cache them between runs.
+#
+# Lanvera does NOT work through this path. Its host pool omits enablerdsaadauth:i:1
+# (BSS ships it), and forcing the property client-side makes the ARM connections
+# response come back unparseable. Lanvera stays on the Chrome web client until its
+# admins set that property on the host pool. See installations/install-apps.sh.
+
+set -euo pipefail
+
+CLIENT="${1:?usage: omarchy-cloudpc <client>   (e.g. bss)}"
+RDP="$HOME/.local/share/avd/${CLIENT}.rdp"
+MONITOR="${2:-DP-5}"
+
+if [ ! -f "$RDP" ]; then
+	echo "omarchy-cloudpc: missing $RDP" >&2
+	command -v notify-send >/dev/null &&
+		notify-send -u critical "Cloud PC" "No .rdp for '$CLIENT'. Download it from the Windows App web client into ~/.local/share/avd/${CLIENT}.rdp"
+	exit 1
+fi
+
+# Size to the target monitor rather than hardcoding. DP-5 is portrait via transform=1,
+# so its logical size is height x width, and the bar's reserved strip comes off the top.
+# +dynamic-resolution means this only has to be close: the session follows the tile.
+size=$(hyprctl monitors -j 2>/dev/null | jq -r --arg m "$MONITOR" '
+  .[] | select(.name == $m)
+  | (if (.transform % 2) == 1 then {w: .height, h: .width} else {w: .width, h: .height} end) as $d
+  | (.scale // 1) as $s
+  | "\((($d.w / $s) - .reserved[0] - .reserved[2]) | floor)x\((($d.h / $s) - .reserved[1] - .reserved[3]) | floor)"
+' 2>/dev/null || true)
+[ -n "${size:-}" ] && [ "$size" != "null" ] || size=1080x1894
+
+export SDL_APP_ID="cloudpc-${CLIENT}"
+
+# -multimon:          the .rdp requests multimon, which is rejected outright when
+#                     combined with an explicit /size ("Invalid or unsupported monitor
+#                     configuration").
+# -drives -smartcard: the .rdp asks for both; redirecting a gvfs drive added ~80s to
+#                     logon while FSLogix mounted the profile container.
+# keyboard grab:      left at its default (on). SDL3 implements
+#                     zwp_keyboard_shortcuts_inhibit_manager_v1, which Hyprland honours
+#                     per surface and drops on focus loss, so local keybinds keep
+#                     working the moment you focus something else.
+# /timeout:60000:     the AVD gateway holds POST /api/arm/v2/connections open while it
+#                     orchestrates a session host, well past the default connect timeout.
+exec sdl-freerdp3 "$RDP" \
+	/size:"$size" \
+	+dynamic-resolution \
+	-multimon \
+	/clipboard \
+	-drives \
+	-smartcard \
+	/timeout:60000

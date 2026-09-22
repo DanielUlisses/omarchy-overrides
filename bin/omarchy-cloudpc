@@ -19,16 +19,34 @@
 # Known limitation: connecting costs TWO browser logins, one for the gateway token and
 # one for the per-host AVD access token. FreeRDP does not cache them between runs.
 #
-# Lanvera does NOT work through this path. Its host pool omits enablerdsaadauth:i:1
-# (BSS ships it), and forcing the property client-side makes the ARM connections
-# response come back unparseable. Lanvera stays on the Chrome web client until its
-# admins set that property on the host pool. See installations/install-apps.sh.
+# Per-host-pool auth differs, and the .rdp says how. Do NOT normalise these:
+#   bss      enablerdsaadauth:i:1                          -> token auth, no prompt
+#   pythian  targetisaadjoined:i:1 + enablerdsaadauth:i:0   -> works as shipped
+#   lanvera  neither property, needs an EMPTY domain (/d: in lanvera.args) plus
+#            username:s: in its .rdp; FreeRDP otherwise defaults the domain to AzureAD
+#            and the host answers 0x52E
+# Adding enablerdsaadauth to a pool that omits it does NOT help -- on Lanvera it made the
+# ARM connections response come back unparseable, which looks like a FreeRDP bug and is
+# not. Equally, do not add username:s:/domain:s: to bss or pythian: they ride into the
+# ARM request and broke it there. See installations/install-apps.sh.
 
 set -euo pipefail
 
 CLIENT="${1:?usage: omarchy-cloudpc <client>   (e.g. bss)}"
 RDP="$HOME/.local/share/avd/${CLIENT}.rdp"
 MONITOR="${2:-DP-5}"
+
+# Launched from a keybind or omarchy-context there is no terminal, and both of those
+# throw stdout/stderr away -- a failed connect then just silently never appears. Keep a
+# log per client instead, previous run kept as .prev. A run from a real terminal still
+# prints normally.
+LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy-cloudpc"
+if [ ! -t 1 ]; then
+	mkdir -p "$LOG_DIR"
+	[ -f "$LOG_DIR/${CLIENT}.log" ] && mv -f "$LOG_DIR/${CLIENT}.log" "$LOG_DIR/${CLIENT}.log.prev"
+	exec >"$LOG_DIR/${CLIENT}.log" 2>&1
+fi
+echo "=== $(date -Is) omarchy-cloudpc $CLIENT ==="
 
 if [ ! -f "$RDP" ]; then
 	echo "omarchy-cloudpc: missing $RDP" >&2
@@ -50,6 +68,18 @@ size=$(hyprctl monitors -j 2>/dev/null | jq -r --arg m "$MONITOR" '
 
 export SDL_APP_ID="cloudpc-${CLIENT}"
 
+# Optional per-client extra flags, one per line, in ~/.local/share/avd/<client>.args.
+# Lanvera needs "/d:" there: FreeRDP defaults the domain to AzureAD (PR #11892), which
+# its session host rejects with 0x52E -- an empty domain is what makes it authenticate.
+# BSS and Pythian must NOT get that, they carry real domains (GLOBAL, OLYMPUS).
+extra=()
+ARGS_FILE="$HOME/.local/share/avd/${CLIENT}.args"
+if [ -f "$ARGS_FILE" ]; then
+	while IFS= read -r line; do
+		[ -n "$line" ] && [ "${line#\#}" = "$line" ] && extra+=("$line")
+	done <"$ARGS_FILE"
+fi
+
 # -multimon:          the .rdp requests multimon, which is rejected outright when
 #                     combined with an explicit /size ("Invalid or unsupported monitor
 #                     configuration").
@@ -61,11 +91,72 @@ export SDL_APP_ID="cloudpc-${CLIENT}"
 #                     working the moment you focus something else.
 # /timeout:60000:     the AVD gateway holds POST /api/arm/v2/connections open while it
 #                     orchestrates a session host, well past the default connect timeout.
-exec sdl-freerdp3 "$RDP" \
+# /prevent-session-lock:180: injects mouse motion every 180s so the remote
+#                     Windows session does not idle-lock. Reconnecting is expensive here
+#                     -- two browser logins, plus an FSLogix profile mount that took over
+#                     two minutes on first use. Drop this flag if a client's policy
+#                     expects the session to lock on idle. The interval is given
+#                     EXPLICITLY on purpose: the value is optional, and left bare it
+#                     swallowed the following argument -- Lanvera's /d: from its
+#                     .args file -- which silently restored the AzureAD domain and
+#                     broke the connect.
+#
+# Local idle is handled implicitly: the SDL client suppresses the local screensaver by
+# default (SDL3 uses zwp_idle_inhibit_manager_v1, which Hyprland honours), so Omarchy
+# will not lock while a cloud PC window is open. Add +sdl-allow-screensaver to get the
+# normal lock-screen behaviour back.
+# Which workspace this client's windows belong on, from ~/.local/share/avd/<client>.ws.
+# Only used to park the login window; the session window itself is placed by the
+# cloudpc-<client> rule in overrides/omarchy-overrides.lua.
+WS_FILE="$HOME/.local/share/avd/${CLIENT}.ws"
+TARGET_WS=""
+[ -f "$WS_FILE" ] && TARGET_WS=$(tr -dc '0-9' <"$WS_FILE")
+
+sdl-freerdp3 "$RDP" \
 	/size:"$size" \
 	+dynamic-resolution \
 	-multimon \
 	/clipboard \
 	-drives \
 	-smartcard \
-	/timeout:60000
+	/timeout:60000 \
+	/prevent-session-lock:180 \
+	"${extra[@]}" &
+rdp_pid=$!
+
+# The Entra login window is freerdp-webview-aad-helper for every client, with an
+# identical title, and it maps wherever the pointer happens to be. With two connects in
+# flight there is no way to tell which login belongs to which cloud PC. It is always a
+# child of our own sdl-freerdp3 though, and Hyprland reports each window's pid, so claim
+# the one whose process tree leads back to us and park it on this client's workspace.
+if [ -n "$TARGET_WS" ] && command -v jq >/dev/null; then
+	(
+		descends_from() { # $1 = pid, $2 = ancestor
+			local p=$1 i=0
+			while [ -n "$p" ] && [ "$p" != 0 ] && [ $i -lt 12 ]; do
+				[ "$p" = "$2" ] && return 0
+				p=$(awk '{print $4}' "/proc/$p/stat" 2>/dev/null) || return 1
+				i=$((i + 1))
+			done
+			return 1
+		}
+		claimed=" "
+		for _ in $(seq 240); do
+			kill -0 "$rdp_pid" 2>/dev/null || break
+			while read -r addr wpid; do
+				[ -n "$addr" ] || continue
+				case "$claimed" in *" $addr "*) continue ;; esac
+				if descends_from "$wpid" "$rdp_pid"; then
+					hyprctl dispatch "hl.dsp.focus({ window = \"address:$addr\" })" >/dev/null 2>&1
+					hyprctl dispatch "hl.dsp.window.move({ workspace = \"$TARGET_WS\", follow = true })" >/dev/null 2>&1
+					claimed="$claimed$addr "
+					echo "login window $addr -> workspace $TARGET_WS"
+				fi
+			done < <(hyprctl clients -j 2>/dev/null |
+				jq -r '.[]|select(.class=="freerdp-webview-aad-helper")|"\(.address) \(.pid)"')
+			sleep 0.5
+		done
+	) &
+fi
+
+wait "$rdp_pid"

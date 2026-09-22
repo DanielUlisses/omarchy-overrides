@@ -25,10 +25,10 @@ hl.env("__GLX_VENDOR_LIBRARY_NAME", "mesa")
 --              ctx 1 Pythian   ctx 2 Lanvera   ctx 3 BSS        ctx 4 Personal
 --   2n browser 21 chrome       22 chrome       23 chrome        24 chrome
 --   3n chat    31 slack        32 teams        33 teams (BSS)   34 chrome (admin)
---   4n cloudpc 41 freerdp      42 avd (chrome) 43 freerdp       44 remmina
+--   4n cloudpc 41 freerdp      42 freerdp      43 freerdp       44 remmina
 --
--- 4n is native FreeRDP now except Lanvera: 41 is the F5-reached Windows 365 Cloud PC
--- and 43 is BSS, both via bin/omarchy-cloudpc. 44 holds the 172.16.0.16 box on
+-- The whole 4n row is native FreeRDP now, via bin/omarchy-cloudpc: 41 is the
+-- F5-reached Windows 365 Cloud PC, 42 Lanvera, 43 BSS. 44 holds the 172.16.0.16 box on
 -- Remmina, moved off Pythian because it is becoming personal. NOTE: hyprmoncfg has no
 -- rule for 44 yet (it generates 21-24, 31-34, 41-43), so 44 opens on whichever monitor
 -- has focus until one is added to its profile.
@@ -170,11 +170,7 @@ o.bind(
 	'omarchy-launch-webapp "https://pythian.atlassian.net/jira/apps/fa75e928-007a-4af4-9530-76503bcd4cba/ea7fda46-2015-4367-bd93-992fbf0c58ca/my-work/week?type=LIST" --profile-directory="Profile 1"'
 )
 o.bind("SUPER + CTRL + M", "Next Event", "omarchy-shell shell toggle tobiasz-p.next-event")
-o.bind(
-	"SUPER + SHIFT + L",
-	"Lanvera Desktop",
-	'omarchy-launch-webapp "https://windows.cloud.microsoft/webclient/avd/69350a1c-2543-4664-8ea9-d3850d5b2216/4b4019bc-77c4-408a-e788-08dbde32b101?endpointId=d136289c-954b-4134-92f0-ed117198fdbd#loginHint=TE.DU0816%40Lanvera.org" --profile-directory="Profile 2"'
-)
+o.bind("SUPER + SHIFT + L", "Lanvera Cloud PC", cloudpc .. " lanvera")
 
 --------------------------------------------------------------------------------
 -- Per-client contexts
@@ -208,10 +204,19 @@ place("chromium", 10)
 -- what makes plain class rules work here -- unlike the chrome-* windows below, which
 -- share a process and have to be placed by script.
 place("cloudpc-pythian", 41) -- Windows 365 Cloud PC reached via F5
+place("cloudpc-lanvera", 42)
 place("cloudpc-bss", 43)
--- Lanvera (42) is still the Chrome AVD web client: its host pool omits
--- enablerdsaadauth:i:1, so FreeRDP cannot authenticate to the session host. It is
--- placed by the script, like the client browsers.
+
+-- Every cloud PC's Entra login is the same class with the same title, and it maps
+-- wherever the pointer is, so with two connects in flight you cannot tell which login
+-- belongs to which host. bin/omarchy-cloudpc parks each one on its client's workspace by
+-- matching the window's pid back to its own sdl-freerdp3. Float it so it stays a dialog
+-- on top of that row instead of tiling into it and shrinking the session window.
+o.window("^(freerdp-webview-aad-helper)$", {
+	float = true,
+	center = true,
+	size = { 900, 760 },
+})
 
 -- Remmina now only holds the 172.16.0.16 box, which is moving to personal use, so it
 -- sits on the Personal column rather than Pythian's. This catches the connection

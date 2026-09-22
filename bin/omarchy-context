@@ -15,7 +15,7 @@
 #              ctx 1 Pythian   ctx 2 Lanvera   ctx 3 BSS        ctx 4 Personal
 #   2n browser 21 chrome       22 chrome       23 chrome        24 chrome
 #   3n chat    31 slack        32 teams        33 teams (BSS)   34 chrome (admin)
-#   4n cloudpc 41 freerdp      42 avd (chrome) 43 freerdp       44 remmina
+#   4n cloudpc 41 freerdp      42 freerdp      43 freerdp       44 remmina
 #
 # SUPER+F<n> lands on that context's 2n and each repeat walks to the next row it
 # actually uses, wrapping. Rows with no wired app (ctx 4 has no cloud PC, ctx 3's AVD
@@ -29,10 +29,7 @@ COMMS=DP-5
 
 CHROME='uwsm app -- google-chrome-stable'
 CLOUDPC='/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-cloudpc'
-# Lanvera's cloud PC is still the Chrome web client: its host pool omits
-# enablerdsaadauth:i:1, so native FreeRDP cannot authenticate to the session host.
-# BSS moved to $CLOUDPC -- see bin/omarchy-cloudpc.
-LANVERA_AVD='https://windows.cloud.microsoft/webclient/avd/69350a1c-2543-4664-8ea9-d3850d5b2216/4b4019bc-77c4-408a-e788-08dbde32b101?endpointId=d136289c-954b-4134-92f0-ed117198fdbd#loginHint=TE.DU0816%40Lanvera.org'
+# Every cloud PC is native FreeRDP now -- see bin/omarchy-cloudpc.
 
 # window class <TAB> workspace <TAB> launch command, one line per app.
 apps() {
@@ -46,7 +43,7 @@ EOF
   2) cat <<EOF
 chrome-lanvera	22	$CHROME --profile-directory="Profile 2" --class=chrome-lanvera
 teams-for-linux	32	uwsm app -- teams-for-linux
-chrome-cloudpc-lanvera	42	omarchy-launch-webapp "$LANVERA_AVD" --profile-directory="Profile 2"
+cloudpc-lanvera	42	$CLOUDPC lanvera
 EOF
     ;;
   3) cat <<EOF

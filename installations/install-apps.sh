@@ -10,26 +10,25 @@ set -euo pipefail
 #
 # freerdp-git builds clean again as of 2026-09-22 (verified at 3.31.1.r383.g1e8b630), so
 # the old "fails to build" note is stale. It is kept enabled because it is the only
-# variant that could ever drive the Lanvera/BSS AVD cloud PCs: the AUR PKGBUILD sets
+# variant that can drive the AVD/Windows 365 cloud PCs: the AUR PKGBUILD sets
 # WITH_WEBVIEW_AAD_AUTH_HELPER=ON and ships /usr/bin/freerdp-webview-aad-helper, while
 # the repo freerdp has WITH_WEBVIEW=OFF.
 #
-# Be aware this does NOT currently give a working AVD client. Attempted 2026-09-22 and it
-# gets four steps in, then dies on an upstream bug:
-#   1. gateway Entra ID login           -- works (webview helper)
-#   2. per-host AVD access token        -- works, but only after adding
-#                                          enablerdsaadauth:i:1 to the .rdp; without it
-#                                          the host rejects the password prompt with 0x52E
-#   3. POST /api/arm/v2/connections     -- response body arrives corrupted; jansson fails
-#                                          at a FIXED offset (5831) with "'}' expected
-#                                          near ':'", i.e. the body itself is mangled,
-#                                          most likely chunked-encoding handling. Not a
-#                                          timeout: /timeout:60000 and
-#                                          /gateway:timeout:600000 change nothing.
-#   4. once a response did parse, the gateway answered HTTP 403 FORBIDDEN, so there may
-#      be a Conditional Access restriction waiting behind the parsing bug anyway.
-# Lanvera/BSS therefore stay on the Chrome AVD web client (SUPER+SHIFT+L). Revisit if
-# FreeRDP PR #13327 and the ARM response handling land upstream.
+# All three cloud PCs (Pythian/F5, Lanvera, BSS) run on this via bin/omarchy-cloudpc.
+# Getting there needed four things, recorded so they are not rediscovered the hard way:
+#   1. the webview helper, for the Entra ID logins (gateway token, then per-host token)
+#   2. per-host auth differs per host pool, and the .rdp says which:
+#        BSS      enablerdsaadauth:i:1                     -> token auth, no prompt
+#        Pythian  targetisaadjoined:i:1 + enablerdsaadauth:i:0 -> works as shipped
+#        Lanvera  neither property                         -> credential prompt
+#      Do NOT add enablerdsaadauth to a pool that omits it: forcing it on Lanvera made
+#      the ARM connections response come back unparseable, which looked like a FreeRDP
+#      bug but was self-inflicted.
+#   3. Lanvera needs an EMPTY domain. FreeRDP defaults to "AzureAD" (PR #11892) and the
+#      host answers 0x52E. "/d:" lives in ~/.local/share/avd/lanvera.args.
+#   4. /timeout:60000, because the gateway holds POST /api/arm/v2/connections open while
+#      it orchestrates a session host.
+# The .rdp files stay in ~/.local/share/avd/ -- they carry tenant ids and a signature.
 #
 # Installing it replaces the repo freerdp, which pacman flags as a conflict. Answer yes:
 # freerdp-git declares provides=(freerdp=...), so remmina-git stays satisfied -- the

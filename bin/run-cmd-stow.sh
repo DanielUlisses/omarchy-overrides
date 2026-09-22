@@ -38,7 +38,9 @@ backup_if_needed "${HOME}/.aliases"
 # new or edited profiles land in the repo.
 backup_if_needed "${HOME}/.config/hyprmoncfg/profiles"
 
-mkdir -p "${HOME}/.config/hyprmoncfg" # keep ~/.config/hyprmoncfg a real dir; only profiles/ is linked
+# Real dirs, so stow links the files inside rather than the whole dir: otherwise gh would
+# write hosts.yml (auth token) and hyprmoncfg its state straight into the repo.
+mkdir -p "${HOME}/.config/gh" "${HOME}/.config/git" "${HOME}/.config/hyprmoncfg"
 
 # -t is required: ~/.omarchy-overrides is a symlink, and stow would otherwise target the
 # parent of the real repo path instead of $HOME.

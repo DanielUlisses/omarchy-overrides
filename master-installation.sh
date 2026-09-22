@@ -21,5 +21,6 @@ bash ./installations/install-plugins.sh
 
 bash ./installations/global-uninstall.sh
 bash ./bin/run-cmd-stow.sh
+bash ./installations/setup-hyprmoncfg.sh
 
 echo "Omarchy overrides installation completed."

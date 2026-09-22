@@ -1,0 +1,181 @@
+{
+  "name": "Home",
+  "created_at": "2026-09-20T03:09:17.204781136Z",
+  "updated_at": "2026-09-20T03:09:51.581762884Z",
+  "outputs": [
+    {
+      "key": "chimei innolux corporation|0x151e",
+      "match_key": "chimei innolux corporation|0x151e",
+      "name": "eDP-1",
+      "description": "Chimei Innolux Corporation 0x151E",
+      "make": "Chimei Innolux Corporation",
+      "model": "0x151E",
+      "enabled": true,
+      "mode": "1920x1080@60.00Hz",
+      "width": 1920,
+      "height": 1080,
+      "refresh": 60.001,
+      "x": 4536,
+      "y": 616,
+      "scale": 1.25,
+      "transform": 0,
+      "bitdepth": 8,
+      "cm": "srgb",
+      "sdr_brightness": 1,
+      "sdr_saturation": 1,
+      "sdr_min_luminance": 0.2,
+      "sdr_max_luminance": 80,
+      "min_luminance": 0
+    },
+    {
+      "key": "samsung electric company|lf24t35|hx5t101012",
+      "match_key": "samsung electric company|lf24t35|hx5t101012",
+      "name": "DP-5",
+      "description": "Samsung Electric Company LF24T35 HX5T101012",
+      "make": "Samsung Electric Company",
+      "model": "LF24T35",
+      "serial": "HX5T101012",
+      "enabled": true,
+      "mode": "1920x1080@74.97Hz",
+      "width": 1920,
+      "height": 1080,
+      "refresh": 74.973,
+      "x": 1536,
+      "y": 0,
+      "scale": 1,
+      "transform": 1,
+      "bitdepth": 8,
+      "cm": "srgb",
+      "sdr_brightness": 1,
+      "sdr_saturation": 1,
+      "sdr_min_luminance": 0.2,
+      "sdr_max_luminance": 80,
+      "min_luminance": 0
+    },
+    {
+      "key": "samsung electric company|lf24t35|hx5t101956",
+      "match_key": "samsung electric company|lf24t35|hx5t101956",
+      "name": "DP-6",
+      "description": "Samsung Electric Company LF24T35 HX5T101956",
+      "make": "Samsung Electric Company",
+      "model": "LF24T35",
+      "serial": "HX5T101956",
+      "enabled": true,
+      "mode": "1920x1080@74.97Hz",
+      "width": 1920,
+      "height": 1080,
+      "refresh": 74.973,
+      "x": 2616,
+      "y": 400,
+      "scale": 1,
+      "transform": 0,
+      "bitdepth": 8,
+      "cm": "srgb",
+      "sdr_brightness": 1,
+      "sdr_saturation": 1,
+      "sdr_min_luminance": 0.2,
+      "sdr_max_luminance": 80,
+      "min_luminance": 0
+    }
+  ],
+  "workspaces": {
+    "enabled": true,
+    "strategy": "manual",
+    "max_workspaces": 4,
+    "group_size": 4,
+    "monitor_order": [
+      "samsung electric company|lf24t35|hx5t101956",
+      "samsung electric company|lf24t35|hx5t101012",
+      "chimei innolux corporation|0x151e"
+    ],
+    "rules": [
+      {
+        "workspace": "1",
+        "output_key": "samsung electric company|lf24t35|hx5t101956",
+        "output_name": "DP-6",
+        "default": true,
+        "persistent": true
+      },
+      {
+        "workspace": "2",
+        "output_key": "samsung electric company|lf24t35|hx5t101956",
+        "output_name": "DP-6"
+      },
+      {
+        "workspace": "3",
+        "output_key": "samsung electric company|lf24t35|hx5t101956",
+        "output_name": "DP-6"
+      },
+      {
+        "workspace": "4",
+        "output_key": "samsung electric company|lf24t35|hx5t101956",
+        "output_name": "DP-6"
+      },
+      {
+        "workspace": "10",
+        "output_key": "chimei innolux corporation|0x151e",
+        "output_name": "eDP-1",
+        "default": true,
+        "persistent": true
+      },
+      {
+        "workspace": "21",
+        "output_key": "samsung electric company|lf24t35|hx5t101012",
+        "output_name": "DP-5",
+        "default": true,
+        "persistent": true
+      },
+      {
+        "workspace": "22",
+        "output_key": "samsung electric company|lf24t35|hx5t101012",
+        "output_name": "DP-5"
+      },
+      {
+        "workspace": "23",
+        "output_key": "samsung electric company|lf24t35|hx5t101012",
+        "output_name": "DP-5"
+      },
+      {
+        "workspace": "24",
+        "output_key": "samsung electric company|lf24t35|hx5t101012",
+        "output_name": "DP-5"
+      },
+      {
+        "workspace": "31",
+        "output_key": "samsung electric company|lf24t35|hx5t101012",
+        "output_name": "DP-5"
+      },
+      {
+        "workspace": "32",
+        "output_key": "samsung electric company|lf24t35|hx5t101012",
+        "output_name": "DP-5"
+      },
+      {
+        "workspace": "33",
+        "output_key": "samsung electric company|lf24t35|hx5t101012",
+        "output_name": "DP-5"
+      },
+      {
+        "workspace": "34",
+        "output_key": "samsung electric company|lf24t35|hx5t101012",
+        "output_name": "DP-5"
+      },
+      {
+        "workspace": "41",
+        "output_key": "samsung electric company|lf24t35|hx5t101012",
+        "output_name": "DP-5"
+      },
+      {
+        "workspace": "42",
+        "output_key": "samsung electric company|lf24t35|hx5t101012",
+        "output_name": "DP-5"
+      },
+      {
+        "workspace": "43",
+        "output_key": "samsung electric company|lf24t35|hx5t101012",
+        "output_name": "DP-5"
+      }
+    ]
+  },
+  "exec": ""
+}

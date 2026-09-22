@@ -24,12 +24,10 @@ EOF
 # Ensure VSC's own auto-update feature is turned off
 printf '{\n  "update.mode": "none"\n}\n' > ~/.config/Code/User/settings.json
 
-#install code insiders
-sudo rm -rf "$HOME/.cache/yay/code-insiders-bin"
-yay -S --noconfirm code-insiders-bin
-
-export EDITOR=code-insiders
-echo "export EDITOR=code-insiders" >> ~/.bashrc
+# Stable VSCode is the default editor: $EDITOR for the shell, `omarchy default editor` for SUPER+E.
+export EDITOR=code
+grep -qxF "export EDITOR=code" ~/.bashrc || echo "export EDITOR=code" >> ~/.bashrc
+omarchy default editor code
 
 # Apply Omarchy theme to VSCode
 omarchy-theme-set-vscode

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 set -e
 
@@ -10,6 +10,10 @@ OVERRIDES_CONF="$OVERRIDES_DIR/overrides/omarchy-overrides.conf"
 HYPRLAND_LUA="$HOME/.config/hypr/hyprland.lua"
 HYPRLAND_CONF="$HOME/.config/hypr/hyprland.conf"
 
+# hyprmoncfg appends its own block to hyprland.lua and expects it to load last, so the
+# overrides have to go in above it rather than at the end of the file.
+HYPRMONCFG_MARKER="-- Added by hyprmoncfg:"
+
 if [ -f "$HYPRLAND_LUA" ]; then
     if [ ! -f "$OVERRIDES_LUA" ]; then
         echo "Overrides Lua file not found at $OVERRIDES_LUA"
@@ -18,6 +22,14 @@ if [ -f "$HYPRLAND_LUA" ]; then
     SOURCE_LINE="dofile(\"$OVERRIDES_LUA\")"
     if grep -Fxq "$SOURCE_LINE" "$HYPRLAND_LUA"; then
         echo "Overrides already sourced in hyprland.lua"
+    elif grep -Fq -e "$HYPRMONCFG_MARKER" "$HYPRLAND_LUA"; then
+        awk -v line="$SOURCE_LINE" -v marker="$HYPRMONCFG_MARKER" '
+            !done && index($0, marker) == 1 { print line; print ""; done = 1 }
+            { print }
+        ' "$HYPRLAND_LUA" > "$HYPRLAND_LUA.tmp"
+        cat "$HYPRLAND_LUA.tmp" > "$HYPRLAND_LUA" # rewrite in place, keeping a symlinked hyprland.lua intact
+        rm "$HYPRLAND_LUA.tmp"
+        echo "Overrides sourced successfully in hyprland.lua (above hyprmoncfg)"
     else
         printf '\n%s\n' "$SOURCE_LINE" >> "$HYPRLAND_LUA"
         echo "Overrides sourced successfully in hyprland.lua"

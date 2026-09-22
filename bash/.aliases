@@ -1,0 +1,309 @@
+#!/bin/bash
+
+gaap() {
+  git add -A && git commit -m "$*" && git push
+}
+
+alias gaa='git add -A'
+
+alias g='git'
+alias d='docker'
+alias gco='git checkout'
+alias gcb='git checkout -b'
+alias gp='git push'
+alias gl='git pull'
+alias gcm='git commit -m'
+alias gcam='git commit -a -m'
+alias gcad='git commit -a --amend'
+alias k='kubectl'
+alias kga='kubectl get all'
+alias kgs='kubectl get svc'
+alias kgp='kubectl get pods'
+kd() {
+  kubectl describe $1 $2
+}
+
+azlogin() {
+  az login --use-device-code
+}
+
+git_current_branch() {
+  local git_context=""
+  local git_args=()
+  local branch=""
+
+  if [ "$1" = "-C" ]; then
+    if [ -z "$2" ]; then
+      return 1
+    fi
+    git_context="$2"
+  fi
+
+  if [ -n "$git_context" ]; then
+    git_args=(-C "$git_context")
+  fi
+
+  branch="$(git "${git_args[@]}" branch --show-current 2>/dev/null)"
+  if [ -n "$branch" ]; then
+    printf '%s\n' "$branch"
+    return 0
+  fi
+
+  branch="$(git "${git_args[@]}" symbolic-ref --quiet --short HEAD 2>/dev/null)"
+  if [ -n "$branch" ]; then
+    printf '%s\n' "$branch"
+    return 0
+  fi
+
+  branch="$(git "${git_args[@]}" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+  if [ -n "$branch" ] && [ "$branch" != "HEAD" ]; then
+    printf '%s\n' "$branch"
+    return 0
+  fi
+
+  local git_file
+  if [ -n "$git_context" ]; then
+    git_file="$git_context/.git"
+  else
+    git_file=".git"
+  fi
+
+  if [ -f "$git_file" ]; then
+    local gitdir_line gitdir_path
+    gitdir_line="$(sed -n '1p' "$git_file" 2>/dev/null)"
+    case "$gitdir_line" in
+      "gitdir: "*)
+        gitdir_path="${gitdir_line#gitdir: }"
+        if [[ "$gitdir_path" == *"/worktrees/"* ]]; then
+          branch="${gitdir_path##*/}"
+          if [ -n "$branch" ]; then
+            printf '%s\n' "$branch"
+            return 0
+          fi
+        fi
+        ;;
+    esac
+  fi
+
+  return 1
+}
+
+azprcreate() {
+  if [ $# -lt 2 ]; then
+    echo "Usage: azprcreate <repo> <target-branch>" >&2
+    return 1
+  fi
+
+  local repo="$1"
+  local target_branch="$2"
+  local source_branch
+
+  source_branch="$(git_current_branch)"
+  if [ -z "$source_branch" ]; then
+    echo "azprcreate: could not detect current git branch in $(pwd -P)" >&2
+    return 1
+  fi
+
+  az repos pr create -r "$repo" -s "$source_branch" -t "$target_branch" -o table
+}
+
+azprcomplete() {
+  az repos pr update --id $1 --status completed -o table
+}
+
+azpiperun() {
+  if [ $# -lt 2 ]; then
+    echo "Usage: azpiperun <project> <pipeline-name>" >&2
+    return 1
+  fi
+
+  local source_branch
+  source_branch="$(git_current_branch)"
+  if [ -z "$source_branch" ]; then
+    echo "azpiperun: could not detect current git branch in $(pwd -P)" >&2
+    return 1
+  fi
+
+  az pipelines run --project "$1" --name "$2" --branch "$source_branch" -o table
+}
+
+azpipestatus() {
+  az pipelines runs list --project $1 --query "[?definition.name=='$2'] | [0:2].{RunID:id, PipelineName:definition.name, Status:status, Result:result, QueueStatus:definition.queueStatus}" --output table
+}
+
+compress() { tar -czf "${1%/}.tar.gz" "${1%/}"; }
+
+alias decompress="tar -xzf"
+
+gaapsup() {
+  git add -A && git commit -m "$*" && git push --set-upstream origin $(git rev-parse --abbrev-ref HEAD)
+}
+
+function gpsup {
+  git push --set-upstream origin $(git rev-parse --abbrev-ref HEAD)
+}
+
+ad() {
+  local path="."
+  local group=""
+  local ai_command="copilot"
+  local worktree_branch=""
+  local new_branch=0
+  local title=""
+  local path_set=0
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -w|--worktree)
+        if [ -z "$2" ]; then
+          echo "ad: option $1 requires a branch name" >&2
+          return 1
+        fi
+        worktree_branch="$2"
+        shift 2
+        ;;
+      -b|--new-branch)
+        new_branch=1
+        shift
+        ;;
+      -c)
+        if [ -z "$2" ]; then
+          echo "ad: option -c requires a value" >&2
+          return 1
+        fi
+        ai_command="$2"
+        shift 2
+        ;;
+      -g)
+        if [ -z "$2" ]; then
+          echo "ad: option -g requires a value" >&2
+          return 1
+        fi
+        group="$2"
+        shift 2
+        ;;
+      -t)
+        if [ -z "$2" ]; then
+          echo "ad: option -t requires a value" >&2
+          return 1
+        fi
+        title="$2"
+        shift 2
+        ;;
+      -h|--help)
+        echo "Usage: ad [path] [-w branch-name] [-b] [-g group-name] [-c ai-command] [-t title]"
+        return 0
+        ;;
+      -*)
+        echo "ad: unknown option $1" >&2
+        return 1
+        ;;
+      *)
+        if [ "$path_set" -eq 1 ]; then
+          echo "ad: only one path is supported" >&2
+          return 1
+        fi
+        path="$1"
+        path_set=1
+        shift
+        ;;
+    esac
+  done
+
+  local resolved_path
+  if ! resolved_path="$(cd "$path" 2>/dev/null && pwd -P)"; then
+    echo "ad: path not found: $path" >&2
+    return 1
+  fi
+
+  if [ -z "$group" ]; then
+    local parent_name current_name
+    current_name="$(basename "$resolved_path")"
+    parent_name="$(basename "$(dirname "$resolved_path")")"
+    group="${parent_name}/${current_name}"
+  fi
+
+  if [ -z "$title" ]; then
+    if [ -n "$worktree_branch" ]; then
+      title="$worktree_branch"
+    else
+      title="$(git -C "$resolved_path" branch --show-current 2>/dev/null)"
+      if [ -z "$title" ]; then
+        echo "ad: could not detect git branch for title. Use -t to set it explicitly." >&2
+        return 1
+      fi
+    fi
+  fi
+
+  local cmd=(agent-deck add "$path" -g "$group" -c "$ai_command" -t "$title")
+  if [ -n "$worktree_branch" ]; then
+    cmd+=(--worktree "$worktree_branch")
+  fi
+  if [ "$new_branch" -eq 1 ]; then
+    cmd+=(--new-branch)
+  fi
+
+  "${cmd[@]}"
+}
+
+copilot_call_safe() {
+  local repo_root outside_dir
+  if repo_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    :
+  else
+    repo_root="$(pwd -P)"
+  fi
+  outside_dir="$(dirname "$repo_root")"
+
+  local opts=(
+    --add-dir "$outside_dir"
+    --allow-tool='shell(ls)'
+    --allow-tool='shell(find)'
+    --allow-tool='shell(rg)'
+    --allow-tool='shell(grep)'
+    --allow-tool='shell(cat)'
+    --allow-tool='shell(head)'
+    --allow-tool='shell(tail)'
+    --allow-tool='shell(sed)'
+    --allow-tool='shell(awk)'
+    --allow-tool='shell(diff)'
+    --allow-tool='shell(git status)'
+    --allow-tool='shell(git diff)'
+    --allow-tool='shell(git show)'
+    --allow-tool='shell(git log)'
+    --allow-tool='shell(git branch)'
+    --allow-tool='shell(pytest)'
+    --allow-tool='shell(pytest:*)'
+    --allow-tool='shell(python -m pytest)'
+    --allow-tool='shell(uv run pytest)'
+    --allow-tool='shell(poetry run pytest)'
+    --allow-tool='shell(pipenv run pytest)'
+    --allow-tool='write'
+    --deny-tool='shell(rm)'
+    --deny-tool='shell(shred)'
+    --deny-tool='shell(dd)'
+    --deny-tool='shell(mkfs:*)'
+    --deny-tool='shell(fdisk:*)'
+    --deny-tool='shell(parted:*)'
+    --deny-tool='shell(wipefs)'
+    --deny-tool='shell(sudo:*)'
+    --deny-tool='shell(git push)'
+    --deny-tool='shell(git push:*)'
+    --deny-tool='shell(git reset)'
+    --deny-tool='shell(git reset:*)'
+    --deny-tool='shell(git clean)'
+    --deny-tool='shell(git clean:*)'
+    --deny-tool='shell(git checkout)'
+    --deny-tool='shell(git checkout:*)'
+    --deny-tool='shell(git restore)'
+    --deny-tool='shell(git restore:*)'
+    --deny-tool='shell(git rebase)'
+    --deny-tool='shell(git rebase:*)'
+  )
+
+  copilot "${opts[@]}" "$@"
+}
+
+alias ccall='copilot_call_safe'
+
+alias review='herdr plugin action invoke open --plugin persiyanov.reviewr'

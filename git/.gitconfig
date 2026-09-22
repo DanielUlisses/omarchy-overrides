@@ -1,0 +1,25 @@
+[alias]
+	co = checkout
+	br = branch
+	ci = commit
+	st = status
+	pr = "!f() { exec az repos pr \"$@\"; }; f"
+	repo = "!f() { exec az repos \"$@\"; }; f"
+[pull]
+	rebase = true
+[init]
+	defaultBranch = master
+[user]
+	name = Daniel Ulisses
+	email = danielulisses@outlook.com
+	signingkey = ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDF+3S6hD2jhdbmodXpYDzCXXRY/4GPX0hstQUaQZanaK4Zk0fhhxAkZG04tv4ndnR464pQ2SfIUoqB4nHfomAAMsd/Ul9bgwK/nSGFc5BmMC13rxmGVfRL040W+bJCx4EM74tJIHScK0sjhTx0ea8V1rXAMrOf7+rUNuiavS0J6v7u2XUxjoBuVAQN7maS97jJ+kgpphq8OkatUhszxqpyITr3aFE62qMTOcNpcKrpHrvGH410GkR6QgWbVhDf7Ka8JsuEjMK8ixgaRysIbSw5c0f+MGClv5Vdx3ukfFXGOIy1b2GFVCalVOOiiHaQoGNiY3/3mWHO6L3qrsmWHRkWOrjb3cJRejGpVamSRsahPnXkw4QFfiTtaDR8Se9qzHF5Ngopsq7mo8qWvltIvv+AOcxBHCRzSDRPfTUjvy/G9/VNpwkFFJ7DrCJXrSkmy8sv5dXiNitd/QMzl1ka/dM7RJilR5cHVauts9I1S6wRwt6fgmkQjHHuevGRQ6gC2u0=
+[gpg]
+	format = ssh
+[gpg "ssh"]
+	program = /opt/1Password/op-ssh-sign
+[commit]
+	gpgsign = true
+[core]
+	excludesfile = /home/daniel/.config/git/ignore
+[credential]
+	helper = store

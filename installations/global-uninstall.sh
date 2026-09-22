@@ -13,3 +13,4 @@ uninstall_if_installed() {
 
 uninstall_if_installed signal-desktop
 uninstall_if_installed spotify
+uninstall_if_installed code-insiders-bin

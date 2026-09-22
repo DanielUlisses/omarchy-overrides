@@ -33,10 +33,19 @@ backup_if_needed "${HOME}/.config/gh/config.yml"
 backup_if_needed "${HOME}/.config/git/ignore"
 backup_if_needed "${HOME}/.gitconfig"
 backup_if_needed "${HOME}/.bashrc"
+backup_if_needed "${HOME}/.aliases"
+# hyprmoncfg writes profiles into this directory, so stow links the whole directory:
+# new or edited profiles land in the repo.
+backup_if_needed "${HOME}/.config/hyprmoncfg/profiles"
 
+mkdir -p "${HOME}/.config/hyprmoncfg" # keep ~/.config/hyprmoncfg a real dir; only profiles/ is linked
+
+# -t is required: ~/.omarchy-overrides is a symlink, and stow would otherwise target the
+# parent of the real repo path instead of $HOME.
 cd "${DOTFILES_REPO}"
 
 echo "Applying stow overrides from ${DOTFILES_REPO}..."
-stow bash
-stow gh
-stow git
+stow -t "${HOME}" bash
+stow -t "${HOME}" gh
+stow -t "${HOME}" git
+stow -t "${HOME}" hyprmoncfg

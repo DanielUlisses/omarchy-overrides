@@ -2,20 +2,24 @@
 
 set -euo pipefail
 
-. ./installations/install-stow.sh
-. ./installations/install-slack.sh
-. ./installations/install-teams-for-linux.sh
-. ./installations/install-google-chrome.sh
-. ./installations/install-vscode.sh
+cd "$(dirname "$0")"
 
-. ./installations/install-overrides.sh
-. ./installations/install-theme.sh
+bash ./installations/link-overrides-repo.sh
 
-. ./installations/global-uninstall.sh
-. ./bin/run-cmd-stow.sh
+# Each step runs as its own process so one script's `exit`/variables can't leak into the next.
+bash ./installations/install-stow.sh
+bash ./installations/install-slack.sh
+bash ./installations/install-teams-for-linux.sh
+bash ./installations/install-google-chrome.sh
+bash ./installations/install-vscode.sh
+bash ./installations/install-herdr.sh
+bash ./installations/install-apps.sh
 
-hyprctl keyword monitor "eDP-1, disable"
-hyprctl keyword monitor "DP-6, disable"
-hyprctl keyword monitor "DP-6, enable"
+bash ./installations/install-overrides.sh
+bash ./installations/install-theme.sh
+bash ./installations/install-plugins.sh
+
+bash ./installations/global-uninstall.sh
+bash ./bin/run-cmd-stow.sh
 
 echo "Omarchy overrides installation completed."

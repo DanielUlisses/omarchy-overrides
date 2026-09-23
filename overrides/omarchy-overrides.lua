@@ -129,8 +129,8 @@ hl.unbind("SUPER + SHIFT + Y")
 o.bind("SUPER + SHIFT + B", "Browser", 'uwsm app -- google-chrome-stable --profile-directory="Default" --class=chrome-personal')
 o.bind("SUPER + E", "Editor", { omarchy = "editor" })
 o.bind("SUPER + SHIFT + E", "Email", "omarchy shell shell toggle omamail '{}'")
-o.bind("SUPER + SHIFT + BACKSLASH", "Passwords", "uwsm app -- 1password --quick-access")
-o.bind("SUPER + BACKSLASH", "1Password", "uwsm app -- 1password")
+o.bind("SUPER + BACKSLASH", "Passwords", "uwsm app -- 1password --quick-access")
+o.bind("SUPER + SHIFT + BACKSLASH", "1Password", "uwsm app -- 1password")
 o.bind("SUPER + SHIFT + Y", "YouTube", 'omarchy-launch-webapp "https://youtube.com/" --profile-directory="Default"')
 -- Cloud PCs, native FreeRDP via bin/omarchy-cloudpc. Each connect costs two browser
 -- logins (gateway token, then per-host token); FreeRDP does not cache them.

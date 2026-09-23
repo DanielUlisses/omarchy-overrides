@@ -19,12 +19,12 @@ plugins() {
 io.github.thetrueferret.decent-workspaces	https://github.com/TheTrueFerret/omarchy-decent-workspaces.git	-	-	--section left --after omarchy.menu
 hass	https://github.com/konradk/hass.git	-	-	--section center --index 0
 tmn73.jira	https://github.com/tmn73/omarchy-jira.git	-	-	--section center --after hass
+njpatel.omapager	https://github.com/njpatel/omapager.git	-	-	--section center --after omarchy.indicators
 omamail	https://github.com/huacnlee/omamail.git	-	-	--section center --after omarchy.clock
 tobiasz-p.next-event	https://github.com/DanielUlisses/next-event.git	dev	https://github.com/tobiasz-p/next-event.git	--section center --after omamail
 io.github.aryan-techie.todoist	https://github.com/DanielUlisses/omarchy-todoist.git	feat/tags	https://github.com/aryan-techie/omarchy-todoist.git	--section right --after omarchy.tray
 claude-acc.usage	https://github.com/DanielUlisses/claude-acc-shell.git	-	-	--section right --after io.github.aryan-techie.todoist
 crmne.hyprmoncfg	https://github.com/crmne/omarchy-hyprmoncfg.git	-	-	--section right --after omarchy.audio
-shavanced.notification-center	https://github.com/Shavanced/omarchy-notification-center-plugin.git	-	-	--section right --after omarchy.power
 io.github.sirjul1337.lock-explorer	https://github.com/SirJul1337/omarchy-lock-explorer.git	-	-	-
 EOF
 }
@@ -34,6 +34,10 @@ DISABLE=(
   omarchy.lock       # -> io.github.sirjul1337.lock-explorer
   omarchy.workspaces # -> io.github.thetrueferret.decent-workspaces
   omarchy.agents     # -> claude-acc.usage
+
+  # omapager is a full replacement notification service, not just a bar widget: the
+  # built-in has to go or both daemons fight over the org.freedesktop.Notifications bus.
+  omarchy.notifications # -> njpatel.omapager
 )
 
 # Packages the plugins shell out to.

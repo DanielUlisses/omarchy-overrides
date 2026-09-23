@@ -27,11 +27,12 @@ hl.env("__GLX_VENDOR_LIBRARY_NAME", "mesa")
 --   3n chat    31 slack        32 teams        33 teams (BSS)   34 chrome (admin)
 --   4n cloudpc 41 freerdp      42 freerdp      43 freerdp       44 remmina
 --
--- The whole 4n row is native FreeRDP now, via bin/omarchy-cloudpc: 41 is the
--- F5-reached Windows 365 Cloud PC, 42 Lanvera, 43 BSS. 44 holds the 172.16.0.16 box on
--- Remmina, moved off Pythian because it is becoming personal. NOTE: hyprmoncfg has no
--- rule for 44 yet (it generates 21-24, 31-34, 41-43), so 44 opens on whichever monitor
--- has focus until one is added to its profile.
+-- The whole 4n row is native FreeRDP now, via bin/omarchy-cloudpc: 41 is the F5 Windows
+-- 365 Cloud PC, 42 Lanvera, 43 BSS. Cloud PCs are named for the sub-client rather than
+-- the context -- 41 sits in ctx 1 (Pythian) but is F5's, because Pythian will bring more.
+-- 44 holds the 172.16.0.16 box on Remmina, moved off Pythian because it is becoming
+-- personal. NOTE: hyprmoncfg has no rule for 44 yet (it generates 21-24, 31-34, 41-43),
+-- so 44 opens on whichever monitor has focus until one is added to its profile.
 --
 -- Workspaces 5..9 are deliberately unruled and open on the focused monitor.
 --
@@ -133,7 +134,7 @@ o.bind("SUPER + BACKSLASH", "1Password", "uwsm app -- 1password")
 o.bind("SUPER + SHIFT + Y", "YouTube", 'omarchy-launch-webapp "https://youtube.com/" --profile-directory="Default"')
 -- Cloud PCs, native FreeRDP via bin/omarchy-cloudpc. Each connect costs two browser
 -- logins (gateway token, then per-host token); FreeRDP does not cache them.
-o.bind("SUPER + SHIFT + R", "Pythian Cloud PC", cloudpc .. " pythian")
+o.bind("SUPER + SHIFT + R", "F5 Cloud PC", cloudpc .. " f5")
 o.bind("SUPER + SHIFT + ALT + R", "BSS Cloud PC", cloudpc .. " bss")
 o.bind("SUPER + SHIFT + CTRL + R", "Remote desktop 172.16.0.16", remmina_box)
 o.bind("SUPER + SHIFT + M", "Meet", 'omarchy-launch-webapp "https://meet.google.com/" --profile-directory="Profile 1"')
@@ -203,7 +204,7 @@ place("chromium", 10)
 -- forces SDL_APP_ID=cloudpc-<client> so each one gets its own stable app_id. That is
 -- what makes plain class rules work here -- unlike the chrome-* windows below, which
 -- share a process and have to be placed by script.
-place("cloudpc-pythian", 41) -- Windows 365 Cloud PC reached via F5
+place("cloudpc-f5", 41) -- named for the sub-client, not ctx 1's client (Pythian)
 place("cloudpc-lanvera", 42)
 place("cloudpc-bss", 43)
 

@@ -12,7 +12,7 @@
 # largest memory consumer in a full four-context session.
 #
 # The window class is forced via SDL_APP_ID so each client gets its own stable app_id
-# (cloudpc-bss, cloudpc-pythian, ...). Without it SDL picks its own and every cloud PC
+# (cloudpc-bss, cloudpc-f5, ...). Without it SDL picks its own and every cloud PC
 # would share one class, which is the same trap chrome-* falls into -- see the note in
 # omarchy-context about why chrome windows have to be placed by script.
 #
@@ -21,14 +21,34 @@
 #
 # Per-host-pool auth differs, and the .rdp says how. Do NOT normalise these:
 #   bss      enablerdsaadauth:i:1                          -> token auth, no prompt
-#   pythian  targetisaadjoined:i:1 + enablerdsaadauth:i:0   -> works as shipped
+#   f5       targetisaadjoined:i:1 + enablerdsaadauth:i:0   -> works as shipped
 #   lanvera  neither property, needs an EMPTY domain (/d: in lanvera.args) plus
 #            username:s: in its .rdp; FreeRDP otherwise defaults the domain to AzureAD
 #            and the host answers 0x52E
 # Adding enablerdsaadauth to a pool that omits it does NOT help -- on Lanvera it made the
 # ARM connections response come back unparseable, which looks like a FreeRDP bug and is
-# not. Equally, do not add username:s:/domain:s: to bss or pythian: they ride into the
+# not. Equally, do not add username:s:/domain:s: to bss or f5: they ride into the
 # ARM request and broke it there. See installations/install-apps.sh.
+#
+# That same "unparseable ARM response" also happens on its own, with correct config:
+#
+#   [ERROR][com.freerdp.core.gateway.arm] - [arm_fill_gateway_parameters]:
+#           Response data is not valid JSON: [...] invalid token near '...'
+#   [ERROR][com.freerdp.core.connection] - [rdp_client_connect]:
+#           error retrieving ARM configuration
+#
+# It is TRANSIENT -- retry before changing anything. On 2026-09-23 Lanvera failed this
+# way twice in a row, then connected 17 minutes later with the same .rdp, same .args and
+# the same binary; f5 connected normally in between. The tell that it is not config: the
+# parse error lands at a DIFFERENT byte offset each time (a wrong .rdp property fails
+# identically every run). There is no on-screen error either -- the Entra login window
+# appears as usual and the session window just never opens.
+#
+# To see the actual response instead of guessing, add to ~/.local/share/avd/<client>.args:
+#   /log-filters:com.freerdp.core.gateway.arm:TRACE
+# which dumps the full ARM request and response into this script's log. REMOVE IT AFTER:
+# that trace writes the Authorization bearer token and the RDmiGatewayToken values to the
+# log in plaintext.
 
 set -euo pipefail
 
@@ -71,7 +91,7 @@ export SDL_APP_ID="cloudpc-${CLIENT}"
 # Optional per-client extra flags, one per line, in ~/.local/share/avd/<client>.args.
 # Lanvera needs "/d:" there: FreeRDP defaults the domain to AzureAD (PR #11892), which
 # its session host rejects with 0x52E -- an empty domain is what makes it authenticate.
-# BSS and Pythian must NOT get that, they carry real domains (GLOBAL, OLYMPUS).
+# BSS and F5 must NOT get that, they carry real domains (GLOBAL, OLYMPUS).
 extra=()
 ARGS_FILE="$HOME/.local/share/avd/${CLIENT}.args"
 if [ -f "$ARGS_FILE" ]; then

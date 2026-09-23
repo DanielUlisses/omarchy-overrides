@@ -17,6 +17,9 @@
 #   3n chat    31 slack        32 teams        33 teams (BSS)   34 chrome (admin)
 #   4n cloudpc 41 freerdp      42 freerdp      43 freerdp       44 remmina
 #
+# Cloud PCs are named after the sub-client, not the context: ctx 1 is the Pythian
+# engagement but its cloud PC is "f5", because Pythian will bring more of them.
+#
 # SUPER+F<n> lands on that context's 2n and each repeat walks to the next row it
 # actually uses, wrapping. Rows with no wired app (ctx 4 has no cloud PC, ctx 3's AVD
 # URL may be unset) drop out of the cycle on their own -- see rows().
@@ -37,7 +40,7 @@ apps() {
   1) cat <<EOF
 chrome-pythian	21	$CHROME --profile-directory="Profile 1" --class=chrome-pythian
 slack	31	uwsm app -- slack --enable-features=UseOzonePlatform --ozone-platform=wayland
-cloudpc-pythian	41	$CLOUDPC pythian
+cloudpc-f5	41	$CLOUDPC f5
 EOF
     ;;
   2) cat <<EOF

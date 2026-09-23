@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Remmina (Pythian cloud PC), Solaar (Logitech devices) and Claude Desktop.
+# Remmina (the 172.16.0.16 box), Solaar (Logitech devices) and Claude Desktop.
 
 set -euo pipefail
 
@@ -14,12 +14,12 @@ set -euo pipefail
 # WITH_WEBVIEW_AAD_AUTH_HELPER=ON and ships /usr/bin/freerdp-webview-aad-helper, while
 # the repo freerdp has WITH_WEBVIEW=OFF.
 #
-# All three cloud PCs (Pythian/F5, Lanvera, BSS) run on this via bin/omarchy-cloudpc.
+# All three cloud PCs (F5, Lanvera, BSS) run on this via bin/omarchy-cloudpc.
 # Getting there needed four things, recorded so they are not rediscovered the hard way:
 #   1. the webview helper, for the Entra ID logins (gateway token, then per-host token)
 #   2. per-host auth differs per host pool, and the .rdp says which:
 #        BSS      enablerdsaadauth:i:1                     -> token auth, no prompt
-#        Pythian  targetisaadjoined:i:1 + enablerdsaadauth:i:0 -> works as shipped
+#        F5       targetisaadjoined:i:1 + enablerdsaadauth:i:0 -> works as shipped
 #        Lanvera  neither property                         -> credential prompt
 #      Do NOT add enablerdsaadauth to a pool that omits it: forcing it on Lanvera made
 #      the ARM connections response come back unparseable, which looked like a FreeRDP
@@ -44,6 +44,6 @@ echo "Installing Claude Desktop..."
 yay -S --noconfirm --needed claude-desktop
 
 if [ ! -f "$HOME/.local/share/remmina/group_rdp_pythian_172-16-0-16.remmina" ]; then
-  echo "NOTE: the Pythian Remmina profile is missing; SUPER+SHIFT+R and context 1 expect" >&2
+  echo "NOTE: the Remmina profile is missing; SUPER+SHIFT+CTRL+R and context 4 expect" >&2
   echo "      ~/.local/share/remmina/group_rdp_pythian_172-16-0-16.remmina (recreate it in Remmina)." >&2
 fi

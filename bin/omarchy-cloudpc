@@ -33,22 +33,59 @@
 # That same "unparseable ARM response" also happens on its own, with correct config:
 #
 #   [ERROR][com.freerdp.core.gateway.arm] - [arm_fill_gateway_parameters]:
-#           Response data is not valid JSON: [...] invalid token near '...'
+#           Response data is not valid JSON: [12:347:5832] '}' expected near ':' [<buffer>]
 #   [ERROR][com.freerdp.core.connection] - [rdp_client_connect]:
 #           error retrieving ARM configuration
 #
-# It is TRANSIENT -- retry before changing anything. On 2026-09-23 Lanvera failed this
-# way twice in a row, then connected 17 minutes later with the same .rdp, same .args and
-# the same binary; f5 connected normally in between. The tell that it is not config: the
-# parse error lands at a DIFFERENT byte offset each time (a wrong .rdp property fails
-# identically every run). There is no on-screen error either -- the Entra login window
-# appears as usual and the session window just never opens.
+# It is TRANSIENT -- retry before changing anything. There is no on-screen error: the
+# Entra login window appears as usual and the session window just never opens.
 #
-# To see the actual response instead of guessing, add to ~/.local/share/avd/<client>.args:
-#   /log-filters:com.freerdp.core.gateway.arm:TRACE
-# which dumps the full ARM request and response into this script's log. REMOVE IT AFTER:
-# that trace writes the Authorization bearer token and the RDmiGatewayToken values to the
-# log in plaintext.
+# What it actually is (traced 2026-09-24 against two captured failures): the gateway
+# serves a MALFORMED body for POST /api/arm/v2/connections. It is pretty-printed, and the
+# two shapes differ structurally rather than by random corruption:
+#
+#   good  line 12 "gatewayConnectionToken": "<475 chars base64url>",
+#         then gatewayLoadBalancerToken, gatewayLoadBalancerMethod,
+#         clientRendezvousLocation and azureInstanceNetworkMetadata on their own lines.
+#   bad   line 12 "gatewayConnectionToken": "<315 chars>": "{\"interface\":[...]}",
+#         -- TWO values behind ONE key. The token stops at 315 chars, the next three
+#         fields are gone entirely, and azureInstanceNetworkMetadata's value survives
+#         with its key name missing. The parser completes the member, meets the second
+#         ':' and rejects the whole document.
+#
+# The error's third number is a byte offset into the body; subtract the start of line 12
+# to get the column it reports.
+#
+# It is the SERVER. Not FreeRDP, not the transport. Two failures six minutes apart were
+# byte-identical in shape -- same 315-char token, same 582-byte line 12, same quote
+# columns -- yet differed elsewhere (redirectedAuthBlob), so they were distinct responses
+# generated the same broken way. A lost chunk would cut somewhere different every time.
+# The response IS chunked (com.freerdp.core.gateway.http at DEBUG logs "chunked encoding
+# end of stream received"), but the decoder reassembled exactly what arrived.
+#
+# Unconfirmed but fits everything seen: the gateway hands out ARRAffinity cookies, so it
+# is load balanced. If one backend serves the broken shape, affinity would pin a client
+# to it for a while -- which is why a cloud PC can fail repeatedly, then work later, while
+# another connects fine in between. "Wait and retry" may really be "wait for a different
+# backend".
+#
+# Do NOT read the byte offset as a config-vs-transient tell. An earlier version of this
+# comment claimed a DIFFERENT offset each time means transient; that is wrong. f5 failed
+# at the identical offset three runs straight and then connected with no change at all,
+# and lanvera gave 5838, 5838, 5832, 5831, 5831. The offset only tracks field lengths.
+#
+# FreeRDP will not retry this for you. arm.c returns the malformed body as HTTP 200 ->
+# arm_handle_request_ok -> parse fails -> *retry = FALSE. The retry loop in
+# arm_resolve_endpoint only spins when retry is set, and the sole setter is an HTTP 400
+# carrying Code == E_PROXY_ORCHESTRATION_LB_SESSIONHOST_DEALLOCATED. So a bad token costs
+# a fresh browser login every time. Just launch again.
+#
+# To capture the response instead of guessing, run with OMARCHY_CLOUDPC_DEBUG=1 (see
+# below). Do NOT use /log-filters:...:TRACE for this -- an earlier version of this comment
+# recommended it and it does not work: arm.c parses BEFORE it logs, so a body that fails
+# to parse is never logged at any level, and TRACE additionally writes the Authorization
+# bearer token and RDmiGatewayToken to the log. /log-filters:...:DEBUG is the useful one,
+# but it only prints the body on a SUCCESSFUL parse.
 
 set -euo pipefail
 
@@ -132,16 +169,66 @@ WS_FILE="$HOME/.local/share/avd/${CLIENT}.ws"
 TARGET_WS=""
 [ -f "$WS_FILE" ] && TARGET_WS=$(tr -dc '0-9' <"$WS_FILE")
 
-sdl-freerdp3 "$RDP" \
-	/size:"$size" \
-	+dynamic-resolution \
-	-multimon \
-	/clipboard \
-	-drives \
-	-smartcard \
-	/timeout:60000 \
-	/prevent-session-lock:180 \
-	"${extra[@]}" &
+cmd=(sdl-freerdp3 "$RDP"
+	/size:"$size"
+	+dynamic-resolution
+	-multimon
+	/clipboard
+	-drives
+	-smartcard
+	/timeout:60000
+	/prevent-session-lock:180
+	"${extra[@]}")
+
+# OMARCHY_CLOUDPC_DEBUG=1 runs the client under gdb to capture the malformed ARM body
+# described at the top of this file. It is the only way to see a failing body: arm.c
+# parses before it logs, so a body that does not parse never reaches any log. The breakpoint is on WINPR_JSON_ParseWithLength, which is an exported symbol
+# in libwinpr3 -- the Arch package is stripped, but a dynamic symbol is enough, so no
+# debug build or rebuild is needed.
+#
+# x86-64 SysV: rdi = const char* value, rsi = size_t buffer_length.
+#
+# The filter takes large buffers whose second byte is not '"'. The ARM connections
+# response is pretty-printed and starts "{\r\n"; the Entra token response is compact and
+# starts {"token_type" -- that one is deliberately skipped, it carries an OAuth
+# refresh_token. Dumps still contain redirectedAuthBlob and the gateway tokens, so the
+# directory is 0700 and these are worth deleting once a failure has been read.
+if [ "${OMARCHY_CLOUDPC_DEBUG:-0}" = 1 ]; then
+	if ! command -v gdb >/dev/null; then
+		echo "omarchy-cloudpc: OMARCHY_CLOUDPC_DEBUG=1 needs gdb installed" >&2
+		exit 1
+	fi
+	DUMP_DIR="$LOG_DIR/arm-dumps"
+	mkdir -p "$DUMP_DIR" && chmod 700 "$DUMP_DIR"
+	stamp=$(date +%Y%m%d-%H%M%S)
+	gdb_script=$(mktemp "${TMPDIR:-/tmp}/omarchy-cloudpc-gdb.XXXXXX")
+	trap 'rm -f "$gdb_script"' EXIT
+	cat >"$gdb_script" <<-'GDBEOF'
+		set pagination off
+		set confirm off
+		set breakpoint pending on
+		set follow-fork-mode parent
+		set detach-on-fork on
+		set $n = 0
+		break WINPR_JSON_ParseWithLength
+		commands
+		silent
+		  if $rsi > 3000 && *(char *)($rdi + 1) != 34
+		    set $n = $n + 1
+		    printf "=== ARM JSON parse #%d len=%lu -> @PREFIX@-%d.json\n", $n, $rsi, $n
+		    eval "dump binary memory @PREFIX@-%d.json 0x%lx 0x%lx", $n, $rdi, $rdi + $rsi
+		  end
+		  continue
+		end
+		run
+		quit
+	GDBEOF
+	sed -i "s|@PREFIX@|$DUMP_DIR/${CLIENT}-${stamp}|g" "$gdb_script"
+	echo "debug: ARM bodies -> $DUMP_DIR/${CLIENT}-${stamp}-N.json (contains tokens)"
+	gdb -q -nx -x "$gdb_script" --args "${cmd[@]}" </dev/null &
+else
+	"${cmd[@]}" &
+fi
 rdp_pid=$!
 
 # The Entra login window is freerdp-webview-aad-helper for every client, with an
@@ -149,6 +236,9 @@ rdp_pid=$!
 # flight there is no way to tell which login belongs to which cloud PC. It is always a
 # child of our own sdl-freerdp3 though, and Hyprland reports each window's pid, so claim
 # the one whose process tree leads back to us and park it on this client's workspace.
+# Walking ancestors rather than checking the parent directly is also what keeps this
+# working under OMARCHY_CLOUDPC_DEBUG=1, where rdp_pid is gdb and the login window is a
+# grandchild.
 if [ -n "$TARGET_WS" ] && command -v jq >/dev/null; then
 	(
 		descends_from() { # $1 = pid, $2 = ancestor

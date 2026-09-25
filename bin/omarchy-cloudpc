@@ -137,11 +137,65 @@ if [ -f "$ARGS_FILE" ]; then
 	done <"$ARGS_FILE"
 fi
 
+# Devices we do not want in a cloud PC session: printers, COM/parallel ports,
+# smartcards, microphone, cameras, USB, drives and location. Clipboard is the only
+# redirection that is wanted.
+#
+# This CANNOT be done with command line flags, and the obvious attempt backfires. The
+# "-foo" form only turns something OFF for options declared COMMAND_LINE_VALUE_BOOL. The
+# device options (printer, smartcard, serial, parallel, usb, drive) are VALUE_OPTIONAL,
+# so "-smartcard" still marks the argument present and the post filter then calls
+# freerdp_client_add_device_channel unconditionally -- see
+# freerdp_client_command_line_post_filter_int in client/common/cmdline.c. The
+# "-drives -smartcard" this script used to pass was therefore ENABLING smartcard
+# redirection: every f5 log shows "registered [smartcard] device #1". "-drives" does
+# clear RedirectDrives, being BOOL, but the .rdp's drivestoredirect:s:* had already added
+# the share by name and the flag does not undo that, so gvfs was redirected as well.
+# Camera and location have no command line option at all.
+#
+# So neutralise them at the source and run from a sanitised COPY of the .rdp. An empty
+# string value is skipped outright by client/common/file.c (utils_str_is_empty guards
+# every *storedirect property), which is exactly "off". The copy is regenerated on every
+# run, so re-downloading the .rdp from the web client cannot quietly bring the devices
+# back. The Microsoft signature is left in place untouched: FreeRDP does not verify it,
+# and none of the gateway/ARM properties are altered -- only local redirection is.
+RUN_DIR="${XDG_RUNTIME_DIR:-/tmp}/omarchy-cloudpc"
+mkdir -p "$RUN_DIR" && chmod 700 "$RUN_DIR"
+SANITISED="$RUN_DIR/${CLIENT}.rdp"
+(
+	umask 077
+	awk 'BEGIN { FS = ":" }
+	{
+		sub(/\r$/, "")
+		if ($1 ~ /^(audiomode|redirectprinters|redirectcomports|redirectsmartcards|redirectdrives|redirectlocation|audiocapturemode|redirectclipboard|devicestoredirect|drivestoredirect|usbdevicestoredirect|camerastoredirect|encode redirected video capture|redirected video capture encoding quality)$/)
+			next
+		print $0 "\r"
+	}
+	END {
+		print "redirectclipboard:i:1\r"
+		print "redirectprinters:i:0\r"
+		print "redirectcomports:i:0\r"
+		print "redirectsmartcards:i:0\r"
+		print "redirectdrives:i:0\r"
+		print "redirectlocation:i:0\r"
+		print "audiocapturemode:i:0\r"
+		print "audiomode:i:2\r"
+		print "devicestoredirect:s:\r"
+		print "drivestoredirect:s:\r"
+		print "usbdevicestoredirect:s:\r"
+		print "camerastoredirect:s:\r"
+	}' "$RDP" >"$SANITISED"
+)
+
 # -multimon:          the .rdp requests multimon, which is rejected outright when
 #                     combined with an explicit /size ("Invalid or unsupported monitor
 #                     configuration").
-# -drives -smartcard: the .rdp asks for both; redirecting a gvfs drive added ~80s to
-#                     logon while FSLogix mounted the profile container.
+# no device flags:    every redirection except the clipboard is turned off in the
+#                     sanitised .rdp above, NOT here. -microphone and -sound are the same
+#                     trap as -smartcard: they are VALUE_OPTIONAL, so the minus form
+#                     still ADDS the audin/rdpsnd channel. Read that comment before
+#                     adding a flag for any device. Keeping the gvfs drive off also saves
+#                     ~80s of logon that FSLogix spent mounting the profile container.
 # keyboard grab:      left at its default (on). SDL3 implements
 #                     zwp_keyboard_shortcuts_inhibit_manager_v1, which Hyprland honours
 #                     per surface and drops on focus loss, so local keybinds keep
@@ -169,20 +223,33 @@ WS_FILE="$HOME/.local/share/avd/${CLIENT}.ws"
 TARGET_WS=""
 [ -f "$WS_FILE" ] && TARGET_WS=$(tr -dc '0-9' <"$WS_FILE")
 
-cmd=(sdl-freerdp3 "$RDP"
+cmd=(sdl-freerdp3 "$SANITISED"
 	/size:"$size"
 	+dynamic-resolution
 	-multimon
 	/clipboard
-	-drives
-	-smartcard
 	/timeout:60000
 	/prevent-session-lock:180
 	"${extra[@]}")
 
-# OMARCHY_CLOUDPC_DEBUG=1 runs the client under gdb to capture the malformed ARM body
-# described at the top of this file. It is the only way to see a failing body: arm.c
-# parses before it logs, so a body that does not parse never reaches any log. The breakpoint is on WINPR_JSON_ParseWithLength, which is an exported symbol
+# OMARCHY_CLOUDPC_DEBUG=1 runs the client under gdb. It does two things:
+#
+#   1. captures the malformed ARM body described at the top of this file. It is the only
+#      way to see a failing body: arm.c parses before it logs, so a body that does not
+#      parse never reaches any log.
+#   2. prints a full backtrace of every thread on any fatal signal, then continues so the
+#      process still dies normally and systemd-coredump still records a core. This is for
+#      the other failure mode -- the session window disappearing while the clipboard is
+#      in use -- where there is nothing in the log and no visible error at all.
+#
+# For the clipboard case, add the channel's own logging on top, which needs no code here
+# because wlog reads the environment:
+#
+#   WLOG_FILTER=com.freerdp.client.sdl.cliprdr:DEBUG,com.freerdp.channels.cliprdr.client:DEBUG,com.freerdp.client.common.cliprdr.file:DEBUG,com.freerdp.utils.cliprdr:DEBUG \
+#     OMARCHY_CLOUDPC_DEBUG=1 omarchy-cloudpc lanvera
+#
+# Keep DEBUG, not TRACE: see the note above about TRACE writing bearer tokens to the log.
+# The breakpoint is on WINPR_JSON_ParseWithLength, which is an exported symbol
 # in libwinpr3 -- the Arch package is stripped, but a dynamic symbol is enough, so no
 # debug build or rebuild is needed.
 #
@@ -209,6 +276,20 @@ if [ "${OMARCHY_CLOUDPC_DEBUG:-0}" = 1 ]; then
 		set breakpoint pending on
 		set follow-fork-mode parent
 		set detach-on-fork on
+		# glibc's setxid/timer signals and a broken pipe are normal here; stopping on
+		# them would freeze the client for no reason.
+		handle SIGPIPE nostop noprint pass
+		handle SIG32 SIG33 SIG34 nostop noprint pass
+		# A fatal signal (the clipboard disconnects were reported as the window simply
+		# vanishing) prints every thread's stack and then lets the process die normally,
+		# so systemd-coredump still gets its core.
+		catch signal SIGSEGV SIGABRT SIGBUS SIGFPE SIGILL
+		commands
+		  printf "\n=== fatal signal caught ===\n"
+		  thread apply all bt full
+		  printf "=== end backtrace ===\n"
+		  continue
+		end
 		set $n = 0
 		break WINPR_JSON_ParseWithLength
 		commands
@@ -227,7 +308,14 @@ if [ "${OMARCHY_CLOUDPC_DEBUG:-0}" = 1 ]; then
 	echo "debug: ARM bodies -> $DUMP_DIR/${CLIENT}-${stamp}-N.json (contains tokens)"
 	gdb -q -nx -x "$gdb_script" --args "${cmd[@]}" </dev/null &
 else
-	"${cmd[@]}" &
+	# stdbuf: wlog's console appender writes through stdio, so with stdout redirected to
+	# the log file it is block buffered while stderr is not. Both land in the same file and
+	# the result is lost and spliced lines -- an earlier f5 log contains
+	# "[INFO][co[09:47:22:920]", one message cut in half by the other stream, and a
+	# connected session whose gdi/logon lines never appeared at all because they were
+	# still sitting in a 4K buffer. Line buffering both keeps the log readable and complete
+	# while the session is still running, which is the whole point of having it.
+	stdbuf -oL -eL "${cmd[@]}" &
 fi
 rdp_pid=$!
 

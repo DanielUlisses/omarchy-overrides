@@ -108,24 +108,25 @@ if command -v cmd.exe >/dev/null && cmd.exe /c ver >/dev/null 2>&1; then
   done
   echo "Installed Alacritty config and JetBrainsMono Nerd Font on Windows"
 
-  # Omarchy-style Win+1..9 / Win+Shift+1..9 desktops (windows/autohotkey), started at login.
+  # Omarchy keybindings (Win as Super: apps, desktops, windows) from windows/autohotkey, started at login.
   # The DLL is Windows-release specific: 2024-12-16 is the 24H2 build, verified on 26300.
   ahk_exe="$localappdata/Programs/AutoHotkey/v2/AutoHotkey64.exe"
   [ -f "$ahk_exe" ] ||
     (cd /mnt/c && cmd.exe /c "winget install --id AutoHotkey.AutoHotkey --scope user --silent --accept-package-agreements --accept-source-agreements" >/dev/null)
   mkdir -p "$appdata/autohotkey"
-  cp "$REPO_DIR/windows/autohotkey/omarchy-desktops.ahk" "$appdata/autohotkey/"
+  cp "$REPO_DIR/windows/autohotkey/omarchy.ahk" "$appdata/autohotkey/"
   [ -f "$appdata/autohotkey/VirtualDesktopAccessor.dll" ] ||
     curl -fsSL https://github.com/Ciantic/VirtualDesktopAccessor/releases/download/2024-12-16-windows11/VirtualDesktopAccessor.dll \
       -o "$appdata/autohotkey/VirtualDesktopAccessor.dll"
   (cd /mnt/c && powershell.exe -NoProfile -Command '
     $exe = "$env:LOCALAPPDATA\Programs\AutoHotkey\v2\AutoHotkey64.exe"
-    $ahk = "$env:APPDATA\autohotkey\omarchy-desktops.ahk"
-    $lnk = Join-Path ([Environment]::GetFolderPath("Startup")) "omarchy-desktops.lnk"
+    $ahk = "$env:APPDATA\autohotkey\omarchy.ahk"
+    $lnk = Join-Path ([Environment]::GetFolderPath("Startup")) "omarchy.lnk"
     $s = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
     $s.TargetPath = $exe; $s.Arguments = "`"$ahk`""; $s.WorkingDirectory = Split-Path $ahk; $s.Save()
     Start-Process $exe -ArgumentList "`"$ahk`""' >/dev/null)
-  echo "Installed AutoHotkey numbered desktops (Win+1..9, Win+Shift+1..9)"
+  mkdir -p "$appdata/omarchy/rdp" # cloud PC .rdp files go here by hand, never in this public repo
+  echo "Installed AutoHotkey Omarchy keybindings"
 else
   echo "NOTE: Windows interop unavailable, skipped Alacritty config + font" >&2
 fi

@@ -4,7 +4,7 @@
 # bar. Built-in omarchy.* plugins ship with Omarchy and are not installed here.
 #
 # Needs a running Omarchy session: add/enable talk to omarchy-shell over IPC.
-# Plugin settings (calendar ICS URLs, Jira/HASS tokens, ...) live in
+# Plugin settings (calendar ICS URLs, HASS tokens, ...) live in
 # ~/.config/omarchy/shell.json and are NOT restored -- they hold secrets.
 
 set -euo pipefail
@@ -16,14 +16,11 @@ PLUGINS_DIR="$HOME/.config/omarchy/plugins"
 # Order matters: --after anchors must be enabled before the plugin that uses them.
 plugins() {
   cat <<'EOF'
-io.github.thetrueferret.decent-workspaces	https://github.com/TheTrueFerret/omarchy-decent-workspaces.git	-	-	--section left --after omarchy.menu
 hass	https://github.com/konradk/hass.git	-	-	--section center --index 0
-tmn73.jira	https://github.com/tmn73/omarchy-jira.git	-	-	--section center --after hass
 njpatel.omapager	https://github.com/njpatel/omapager.git	-	-	--section center --after omarchy.indicators
 omamail	https://github.com/huacnlee/omamail.git	-	-	--section center --after omarchy.clock
 tobiasz-p.next-event	https://github.com/DanielUlisses/next-event.git	dev	https://github.com/tobiasz-p/next-event.git	--section center --after omamail
-io.github.aryan-techie.todoist	https://github.com/DanielUlisses/omarchy-todoist.git	feat/tags	https://github.com/aryan-techie/omarchy-todoist.git	--section right --after omarchy.tray
-claude-acc.usage	https://github.com/DanielUlisses/claude-acc-shell.git	-	-	--section right --after io.github.aryan-techie.todoist
+claude-acc.usage	https://github.com/DanielUlisses/claude-acc-shell.git	-	-	--section right --after omarchy.tray
 crmne.hyprmoncfg	https://github.com/crmne/omarchy-hyprmoncfg.git	-	-	--section right --after omarchy.audio
 io.github.sirjul1337.lock-explorer	https://github.com/SirJul1337/omarchy-lock-explorer.git	-	-	-
 EOF
@@ -32,7 +29,6 @@ EOF
 # Built-ins replaced by the plugins above.
 DISABLE=(
   omarchy.lock       # -> io.github.sirjul1337.lock-explorer
-  omarchy.workspaces # -> io.github.thetrueferret.decent-workspaces
   omarchy.agents     # -> claude-acc.usage
 
   # omapager is a full replacement notification service, not just a bar widget: the
@@ -78,5 +74,8 @@ done < <(plugins)
 for id in "${DISABLE[@]}"; do
   omarchy plugin disable "$id"
 done
+
+# Built-in workspaces widget lives next to the menu, not in the center.
+omarchy bar move omarchy.workspaces --section left --after omarchy.menu
 
 echo "Omarchy plugins installed."

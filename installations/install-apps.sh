@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Remmina (the 172.16.0.16 box), Solaar (Logitech devices) and Claude Desktop.
+# Remmina (the 172.16.10.156 box), Solaar (Logitech devices) and Claude Desktop.
 
 set -euo pipefail
 
@@ -43,7 +43,7 @@ yay -S --noconfirm --needed solaar
 echo "Installing Claude Desktop..."
 yay -S --noconfirm --needed claude-desktop
 
-if [ ! -f "$HOME/.local/share/remmina/group_rdp_pythian_172-16-0-16.remmina" ]; then
+if [ ! -f "$HOME/.local/share/remmina/group_rdp_pythian_172-16-10-156.remmina" ]; then
   echo "NOTE: the Remmina profile is missing; SUPER+SHIFT+CTRL+R and context 4 expect" >&2
-  echo "      ~/.local/share/remmina/group_rdp_pythian_172-16-0-16.remmina (recreate it in Remmina)." >&2
+  echo "      ~/.local/share/remmina/group_rdp_pythian_172-16-10-156.remmina (recreate it in Remmina)." >&2
 fi

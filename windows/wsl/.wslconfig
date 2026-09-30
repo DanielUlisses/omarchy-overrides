@@ -1,0 +1,14 @@
+# %UserProfile%\.wslconfig -- applies to every WSL 2 distro after `wsl --shutdown`.
+# Host: Core Ultra 7 155H (6P + 8E + 2LP cores, 22 threads), 32GB RAM.
+[wsl2]
+# Half the default, leaving Windows room for Chrome, Teams and the cloud PC sessions.
+memory=8GB
+# The P-core thread count. Windows still schedules the vCPUs, but capping them keeps
+# parallel builds from crowding out the Windows apps on the remaining cores.
+processors=12
+# Default is 25% of memory (2GB); more headroom before the OOM killer on heavy builds.
+swap=4GB
+
+[experimental]
+# Hand the Linux page cache back to Windows when WSL goes idle, instead of holding it.
+autoMemoryReclaim=dropCache

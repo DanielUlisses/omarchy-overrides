@@ -90,6 +90,10 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if command -v cmd.exe >/dev/null && cmd.exe /c ver >/dev/null 2>&1; then
   appdata=$(wslpath "$(cmd.exe /c 'echo %APPDATA%' 2>/dev/null | tr -d '\r')")
   localappdata=$(wslpath "$(cmd.exe /c 'echo %LOCALAPPDATA%' 2>/dev/null | tr -d '\r')")
+  # WSL VM limits (8GB instead of half the host RAM); only written when absent.
+  userprofile=$(wslpath "$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')")
+  [ -f "$userprofile/.wslconfig" ] || sed 's/$/\r/' "$REPO_DIR/windows/wsl/.wslconfig" >"$userprofile/.wslconfig"
+
   mkdir -p "$appdata/alacritty"
   cp "$REPO_DIR"/windows/alacritty/*.toml "$appdata/alacritty/"
 

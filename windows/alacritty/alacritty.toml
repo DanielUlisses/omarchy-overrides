@@ -16,17 +16,23 @@ bold = { family = "JetBrainsMono Nerd Font", style = "Bold" }
 italic = { family = "JetBrainsMono Nerd Font", style = "Italic" }
 size = 9
 
-# Omarchy tiles a borderless window; the Windows equivalent is borderless and maximized.
+# Windows has no tiling: a borderless window at a normal size that Win+Arrow snapping can place
+# next to other windows (no title bar, so it cannot be dragged or resized with the mouse).
 [window]
 padding.x = 14
 padding.y = 14
 decorations = "None"
-startup_mode = "Maximized"
+startup_mode = "Windowed"
+dimensions = { columns = 140, lines = 40 }
+# Overrides the theme's 0.7, which is too see-through over busy Windows desktops.
+opacity = 0.95
 
 [keyboard]
 bindings = [
 { key = "Insert", mods = "Shift", action = "Paste" },
 { key = "Insert", mods = "Control", action = "Copy" },
+# Omarchy closes windows with Super+W, but Windows owns Win+W (Widgets).
+{ key = "W", mods = "Control|Shift", action = "Quit" },
 # Send Shift+Return as CSI-u so TUIs can distinguish it from Return without treating it as Alt+Return.
 { key = "Return", mods = "Shift", chars = "\u001B[13;2u" },
 # Legacy encoding sends Alt+Shift+Return the same as Alt+Return; send CSI-u so tmux can match M-S-Enter.

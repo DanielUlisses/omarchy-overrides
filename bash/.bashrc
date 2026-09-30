@@ -9,6 +9,9 @@
 if [[ -f /etc/omarchy.conf ]]; then
   source /etc/omarchy.conf
   export OMARCHY_PATH="${OMARCHY_PATH:-/usr/share/omarchy}"
+elif [[ ! -d /usr/share/omarchy && -d $HOME/.local/share/omarchy ]]; then
+  # WSL: no omarchy package, just a git clone of basecamp/omarchy for the shell layer
+  export OMARCHY_PATH="$HOME/.local/share/omarchy"
 else
   export OMARCHY_PATH=/usr/share/omarchy
 fi
@@ -24,12 +27,34 @@ PS1='[\u@\h \W$(__git_ps1 " (%s)")]\$ '
 export SSH_AUTH_SOCK=~/.1password/agent.sock
 source ~/.aliases
 
+# WSL: no Hyprland/xdg session, so hand URLs and files to Windows, and bridge the
+# Windows 1Password SSH agent (named pipe) to the same socket path Omarchy uses.
+if grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
+  export BROWSER=explorer.exe
+
+  open() (
+    for target in "$@"; do
+      [[ -e $target ]] && target="$(wslpath -w "$target")"
+      explorer.exe "$target"
+    done >/dev/null 2>&1 &
+  )
+
+  # Needs npiperelay.exe on the Windows PATH (winget install albertony.npiperelay)
+  # and "Use the SSH agent" enabled in 1Password for Windows.
+  if command -v npiperelay.exe >/dev/null && command -v socat >/dev/null &&
+    ! ss -a 2>/dev/null | grep -q "$SSH_AUTH_SOCK"; then
+    mkdir -p "$(dirname "$SSH_AUTH_SOCK")"
+    rm -f "$SSH_AUTH_SOCK"
+    (setsid socat UNIX-LISTEN:"$SSH_AUTH_SOCK",fork EXEC:"npiperelay.exe -ei -s //./pipe/openssh-ssh-agent",nofork &) >/dev/null 2>&1
+  fi
+fi
+
 export PATH="$HOME/.local/bin:$PATH"
 export ANDROID_HOME="$HOME/Android/Sdk"
 export EDITOR=code
 
 # Claude Code Account Switcher
-eval "$('/home/daniel/.claude-switch/bin/claude-acc' init bash)"
+[[ -x $HOME/.claude-switch/bin/claude-acc ]] && eval "$("$HOME/.claude-switch/bin/claude-acc" init bash)"
 
 # druk
-export PATH=/home/daniel/.druk/bin:$PATH
+[[ -d $HOME/.druk/bin ]] && export PATH="$HOME/.druk/bin:$PATH"

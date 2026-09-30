@@ -29,6 +29,10 @@ backup_if_needed() {
   fi
 }
 
+# WSL has no Hyprland, so hyprmoncfg (monitor profiles) is left out there.
+IS_WSL=0
+grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null && IS_WSL=1
+
 backup_if_needed "${HOME}/.config/gh/config.yml"
 backup_if_needed "${HOME}/.config/git/ignore"
 backup_if_needed "${HOME}/.gitconfig"
@@ -36,11 +40,12 @@ backup_if_needed "${HOME}/.bashrc"
 backup_if_needed "${HOME}/.aliases"
 # hyprmoncfg writes profiles into this directory, so stow links the whole directory:
 # new or edited profiles land in the repo.
-backup_if_needed "${HOME}/.config/hyprmoncfg/profiles"
+[[ ${IS_WSL} == 1 ]] || backup_if_needed "${HOME}/.config/hyprmoncfg/profiles"
 
 # Real dirs, so stow links the files inside rather than the whole dir: otherwise gh would
 # write hosts.yml (auth token) and hyprmoncfg its state straight into the repo.
-mkdir -p "${HOME}/.config/gh" "${HOME}/.config/git" "${HOME}/.config/hyprmoncfg"
+mkdir -p "${HOME}/.config/gh" "${HOME}/.config/git"
+[[ ${IS_WSL} == 1 ]] || mkdir -p "${HOME}/.config/hyprmoncfg"
 
 # -t is required: ~/.omarchy-overrides is a symlink, and stow would otherwise target the
 # parent of the real repo path instead of $HOME.
@@ -50,4 +55,4 @@ echo "Applying stow overrides from ${DOTFILES_REPO}..."
 stow -t "${HOME}" bash
 stow -t "${HOME}" gh
 stow -t "${HOME}" git
-stow -t "${HOME}" hyprmoncfg
+[[ ${IS_WSL} == 1 ]] || stow -t "${HOME}" hyprmoncfg

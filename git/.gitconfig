@@ -23,3 +23,7 @@
 	excludesfile = /home/daniel/.config/git/ignore
 [credential]
 	helper = store
+# Machine-specific overrides, not in the repo (the WSL box points gpg.ssh.program at
+# 1Password's op-ssh-sign-wsl.exe here). Git silently skips it when the file is missing.
+[include]
+	path = ~/.gitconfig.local

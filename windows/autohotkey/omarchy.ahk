@@ -60,12 +60,15 @@ LOCALAPPDATA := EnvGet("LOCALAPPDATA")
 ALACRITTY := A_ProgramFiles "\Alacritty\alacritty.exe"
 CHROME := A_ProgramFiles "\Google\Chrome\Application\chrome.exe"
 
-; Chrome profiles on this machine (Local State), not the Linux ones:
+; Chrome profile directories on this machine (Local State), not the Linux ones:
 ;   Default   = Pythian (dsilva@pythian.com)
 ;   Profile 3 = personal (daniel.u.silva@gmail.com)
-;   Profile 7 = codingband.com
+;   Profile 7 = Lanvera (renamed from codingband.com)
+;   Profile 8 = BSS
 PERSONAL := "Profile 3"
 PYTHIAN := "Default"
+LANVERA := "Profile 7"
+BSS := "Profile 8"
 
 ; Bring an existing window forward, otherwise start the app (Omarchy's focus = true).
 ; target is a command line, or a function for launches that need more than Run.
@@ -198,3 +201,162 @@ FocusMonitor(step) {
 
 ^!Tab:: FocusMonitor(1)
 ^!+Tab:: FocusMonitor(-1)
+
+; ---------------------------------------------------------------------------------------
+; Client contexts, like bin/omarchy-context: one virtual desktop per client.
+;   1 Pythian   2 Lanvera   3 BSS   4 Personal
+;   Win+1..4           switch to that client (the desktop keys above)
+;   Win+Shift+F1..F4   launch that client's apps onto its desktop, then switch there
+;   Win+Shift+Q        close the current client's apps
+; Window rules place an app on its client's desktop when its window opens, however it was
+; started. A virtual desktop spans every monitor, so there are no per-monitor rows here.
+; ---------------------------------------------------------------------------------------
+
+GetCurrentDesktopNumberProc := VDA("GetCurrentDesktopNumber")
+GetWindowDesktopNumberProc := VDA("GetWindowDesktopNumber")
+
+RDP_DIR := A_AppData "\omarchy\rdp\"
+
+; exe and/or title (substring) identify the window. run marks an app the context launches.
+; Chrome app windows are titled by the page alone ("WhatsApp"); a normal tab carries
+; " - Google Chrome", so a tab called WhatsApp does not drag the whole browser along.
+RULES := [
+    {desktop: 1, exe: "slack.exe", run: '"' LOCALAPPDATA '\slack\slack.exe"'},
+    {desktop: 1, title: "Cloud PC Enterprise", run: RDP_DIR "f5.rdpw"},
+    {desktop: 2, exe: "ms-teams.exe", run: StoreApp("MSTeams_8wekyb3d8bbwe!MSTeams")},
+    {desktop: 2, title: "SessionDesktop", run: RDP_DIR "lanvera.rdpw"},
+    {desktop: 3, title: "Shared BSS", run: RDP_DIR "sharedBss.rdpw"},
+    {desktop: 4, exe: "mstsc.exe", title: "172.16.0.16", run: RDP_DIR "Pythian.rdp"},
+    {desktop: 4, exe: "Spark Desktop.exe"},
+    {desktop: 4, exe: "claude.exe"},
+    {desktop: 4, exe: "chrome.exe", title: "WhatsApp", appOnly: true},
+]
+
+; Chrome shares one process across profiles, so its windows cannot be told apart by rule;
+; like omarchy-context, the context launch places them instead (by opening them on the
+; client's desktop).
+CONTEXT_CHROME := Map(1, PYTHIAN, 2, LANVERA, 3, BSS, 4, PERSONAL)
+
+RuleMatches(rule, hwnd) {
+    try {
+        if rule.HasProp("exe") && WinGetProcessName(hwnd) != rule.exe
+            return false
+        title := WinGetTitle(hwnd)
+    } catch
+        return false
+    if rule.HasProp("title") && !InStr(title, rule.title)
+        return false
+    if rule.HasProp("appOnly") && InStr(title, " - Google Chrome")
+        return false
+    return true
+}
+
+WindowDesktop(hwnd) => DllCall(GetWindowDesktopNumberProc, "Ptr", hwnd, "Int") + 1
+CurrentDesktop() => DllCall(GetCurrentDesktopNumberProc, "Int") + 1
+
+MoveToDesktop(hwnd, n) {
+    EnsureDesktops(n)
+    DllCall(MoveWindowToDesktopNumberProc, "Ptr", hwnd, "Int", n - 1, "Int")
+}
+
+; Rules apply once, while a window is new (titles often arrive a moment after the window
+; does). Moving it somewhere else by hand later sticks, as with Hyprland window rules.
+created := Map()
+placed := Map()
+
+PlaceWindow(hwnd) {
+    if placed.Has(hwnd) || !created.Has(hwnd) || A_TickCount - created[hwnd] > 15000
+        return
+    for rule in RULES {
+        if RuleMatches(rule, hwnd) {
+            placed[hwnd] := true
+            if WindowDesktop(hwnd) != rule.desktop
+                MoveToDesktop(hwnd, rule.desktop)
+            return
+        }
+    }
+}
+
+ShellMessage(wParam, lParam, *) {
+    static HSHELL_WINDOWCREATED := 1, HSHELL_REDRAW := 6
+    if wParam = HSHELL_WINDOWCREATED {
+        created[lParam] := A_TickCount
+        for delay in [300, 1500, 5000]
+            SetTimer PlaceWindow.Bind(lParam), -delay
+    } else if wParam = HSHELL_REDRAW && created.Has(lParam) {
+        PlaceWindow(lParam)
+    }
+}
+
+DllCall("RegisterShellHookWindow", "Ptr", A_ScriptHwnd)
+OnMessage(DllCall("RegisterWindowMessage", "Str", "SHELLHOOK"), ShellMessage)
+
+; Forget windows that are long gone so the maps do not grow forever.
+SetTimer () => (PruneMap(created), PruneMap(placed)), 600000
+PruneMap(m) {
+    for hwnd in [m*]
+        if !WinExist("ahk_id " hwnd)
+            m.Delete(hwnd)
+}
+
+MatchingWindows(rule) {
+    found := []
+    for hwnd in WinGetList()
+        if RuleMatches(rule, hwnd)
+            found.Push(hwnd)
+    return found
+}
+
+ChromeOnDesktop(n) {
+    for hwnd in WinGetList("ahk_exe chrome.exe ahk_class Chrome_WidgetWin_1")
+        if WinGetTitle(hwnd) != "" && InStr(WinGetTitle(hwnd), " - Google Chrome") && WindowDesktop(hwnd) = n
+            return true
+    return false
+}
+
+; Idempotent, like omarchy-context launch: running apps are pulled onto the desktop,
+; missing ones are started there.
+LaunchContext(n, *) {
+    GoToDesktop(n)
+    if !ChromeOnDesktop(n)
+        Browser(CONTEXT_CHROME[n])
+    for rule in RULES {
+        if rule.desktop != n || !rule.HasProp("run")
+            continue
+        windows := MatchingWindows(rule)
+        if windows.Length {
+            for hwnd in windows
+                MoveToDesktop(hwnd, n)
+        } else if InStr(rule.run, RDP_DIR) && !FileExist(rule.run) {
+            TrayTip "Missing " rule.run, "Cloud PC", 3
+        } else {
+            Run rule.run
+            ; An app coming back from the tray may reopen on the desktop it last used.
+            SetTimer RegroupRule.Bind(rule, n), -4000
+            Sleep 800 ; stagger, as omarchy-context does, so windows map in order
+        }
+    }
+}
+
+RegroupRule(rule, n) {
+    for hwnd in MatchingWindows(rule)
+        if WindowDesktop(hwnd) != n
+            MoveToDesktop(hwnd, n)
+}
+
+QuitContext(*) {
+    n := CurrentDesktop()
+    if !CONTEXT_CHROME.Has(n)
+        return
+    for hwnd in WinGetList("ahk_exe chrome.exe ahk_class Chrome_WidgetWin_1")
+        if InStr(WinGetTitle(hwnd), " - Google Chrome") && WindowDesktop(hwnd) = n
+            WinClose hwnd
+    for rule in RULES
+        if rule.desktop = n && rule.HasProp("run")
+            for hwnd in MatchingWindows(rule)
+                WinClose hwnd
+}
+
+Loop 4
+    Hotkey "#+F" A_Index, LaunchContext.Bind(A_Index)
+#+q:: QuitContext()

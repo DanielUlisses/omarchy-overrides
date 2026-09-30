@@ -125,7 +125,9 @@ OpenRdp(file) {
 #+a:: FocusOrRun("ahk_exe claude.exe", StoreApp("Claude_pzs8sxrjxfjjc!Claude"))
 #+s:: FocusOrRun("ahk_exe slack.exe", '"' LOCALAPPDATA '\slack\slack.exe"')
 #+t:: FocusOrRun("ahk_exe ms-teams.exe", StoreApp("MSTeams_8wekyb3d8bbwe!MSTeams"))
-#+e:: FocusOrRun("ahk_exe Spark Desktop.exe", '"' LOCALAPPDATA '\Programs\SparkDesktop\Spark Desktop.exe"')
+; Match the main window by title: Spark also keeps a visible "Active Transcription" widget,
+; and from the tray its main window is hidden, where rerunning the exe brings it back.
+#+e:: FocusOrRun("Spark Desktop ahk_exe Spark Desktop.exe",'"' LOCALAPPDATA '\Programs\SparkDesktop\Spark Desktop.exe"')
 #+w:: FocusOrRun("WhatsApp ahk_exe chrome.exe", () => WebApp("https://web.whatsapp.com/", PERSONAL))
 
 #+y:: WebApp("https://youtube.com/", PERSONAL)

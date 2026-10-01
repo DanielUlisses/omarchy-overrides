@@ -116,8 +116,11 @@ WebApp(url, profile) => Browser(profile, "--app=" url)
 ; Opened as they are, the files win over the Windows App's own display settings and span
 ; every monitor full screen (use multimon:i:1, or screen mode id's full-screen default).
 ; So each launch opens a regenerated copy with only the display properties rewritten to
-; a window on one monitor, which GlazeWM then tiles onto the client's 4n row. None of
-; those properties are in the files' signscope, so the Microsoft signature stays valid.
+; a window on one monitor, which GlazeWM then tiles onto the client's 4n row. Windows key
+; combos also stay on this machine (keyboardhook:i:0): by default the session grabs them
+; while it has focus, so GlazeWM and the keys below go dead inside it. Remote Start is
+; still Ctrl+Esc. None of these properties are in the files' signscope, so the Microsoft
+; signature stays valid.
 RDP_DIR := A_AppData "\omarchy\rdp\"
 
 OpenRdp(rdpFile, *) {
@@ -128,9 +131,9 @@ OpenRdp(rdpFile, *) {
     }
     out := ""
     for line in StrSplit(FileRead(src), "`n", "`r")
-        if line != "" && !RegExMatch(line, "i)^(screen mode id|use multimon|selectedmonitors|singlemoninwindowedmode|maximizetocurrentdisplays|dynamic resolution):")
+        if line != "" && !RegExMatch(line, "i)^(screen mode id|use multimon|selectedmonitors|singlemoninwindowedmode|maximizetocurrentdisplays|dynamic resolution|keyboardhook):")
             out .= line "`r`n"
-    out .= "screen mode id:i:1`r`nuse multimon:i:0`r`nsinglemoninwindowedmode:i:1`r`ndynamic resolution:i:1`r`n"
+    out .= "screen mode id:i:1`r`nuse multimon:i:0`r`nsinglemoninwindowedmode:i:1`r`ndynamic resolution:i:1`r`nkeyboardhook:i:0`r`n"
     dir := A_Temp "\omarchy-rdp"
     DirCreate dir
     dst := dir "\" rdpFile
@@ -143,27 +146,11 @@ OpenRdp(rdpFile, *) {
 #+!r:: OpenRdp("sharedBss.rdpw")
 #+l:: OpenRdp("lanvera.rdpw")
 
-; FreeRDP's /prevent-session-lock:180 for the Windows App: every 3 minutes, a mouse move
-; posted to each session's input window (IHWindowClass), which the client forwards to the
-; remote host, so its idle lock never fires. Posted, not sent: the local mouse does not
-; move, and cloaked sessions on other GlazeWM workspaces get it too. A session you are
-; working in is skipped, since the move jumps the remote cursor to the given point.
-KeepCloudPcsAwake() {
-    static nudge := 0
-    nudge := !nudge ; alternate between two points so every tick is real motion
-    DetectHiddenWindows true
-    for hwnd in WinGetList("ahk_class TscShellContainerClass ahk_exe msrdc.exe") {
-        if WinActive(hwnd) && A_TimeIdlePhysical < 180000
-            continue
-        try PostMessage 0x200, 0, (10 << 16) | (10 + nudge), ControlGetHwnd("IHWindowClass1", hwnd) ; WM_MOUSEMOVE
-    }
-    DetectHiddenWindows false
-}
-SetTimer KeepCloudPcsAwake, 180000
-
 ; Kill the focused cloud PC. A locked session has no disconnect button, and closing the
 ; window only asks the remote side. Each session is its own msrdc.exe; the remote session
-; stays signed in, so relaunching reconnects to it.
+; stays signed in, so relaunching reconnects to it. There is no keep-alive against the
+; idle lock, unlike FreeRDP's /prevent-session-lock: messages posted to the session's input
+; window never reach the remote, and F5's file signs ClientRejectInjectedInput.
 #^q:: {
     if WinActive("ahk_class TscShellContainerClass ahk_exe msrdc.exe")
         ProcessClose WinGetPID("A")

@@ -94,6 +94,18 @@ if command -v cmd.exe >/dev/null && cmd.exe /c ver >/dev/null 2>&1; then
   userprofile=$(wslpath "$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')")
   [ -f "$userprofile/.wslconfig" ] || sed 's/$/\r/' "$REPO_DIR/windows/wsl/.wslconfig" >"$userprofile/.wslconfig"
 
+  # Neovim's clipboard provider on WSL (LazyVim yanks/pastes through "+). It is a Windows
+  # binary, kept on the Windows side and linked onto the Linux PATH.
+  if [ ! -x "$localappdata/Programs/win32yank/win32yank.exe" ]; then
+    tmp=$(mktemp -d)
+    curl -fsSL https://github.com/equalsraf/win32yank/releases/latest/download/win32yank-x64.zip -o "$tmp/w.zip"
+    mkdir -p "$localappdata/Programs/win32yank"
+    unzip -o -q "$tmp/w.zip" win32yank.exe -d "$localappdata/Programs/win32yank"
+    rm -rf "$tmp"
+  fi
+  mkdir -p "$HOME/.local/bin"
+  ln -sf "$localappdata/Programs/win32yank/win32yank.exe" "$HOME/.local/bin/win32yank.exe"
+
   mkdir -p "$appdata/alacritty"
   cp "$REPO_DIR"/windows/alacritty/*.toml "$appdata/alacritty/"
 

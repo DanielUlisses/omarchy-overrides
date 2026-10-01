@@ -105,6 +105,13 @@ WebApp(url, profile) => Browser(profile, "--app=" url)
 #+g:: WebApp("https://vertexaisearch.cloud.google.com/home/cid/a72e70f2-3125-4270-916e-2c345f90d694", PYTHIAN)
 #+h:: WebApp("https://pythian.atlassian.net/jira/apps/fa75e928-007a-4af4-9530-76503bcd4cba/ea7fda46-2015-4367-bd93-992fbf0c58ca/my-work/week?type=LIST", PYTHIAN)
 
+; Universal copy/paste, as Omarchy does it: Ctrl+Insert / Shift+Insert work in terminals
+; (Alacritty binds both) as well as in regular apps. Win+Ctrl+V is Windows' own
+; clipboard history, which normally sits on the Win+V taken here.
+#c:: Send "^{Insert}"
+#v:: Send "+{Insert}"
+#^v:: Send "#v"
+
 ; Cloud PCs, from the .rdp/.rdpw files in %APPDATA%\omarchy\rdp (never in this public repo).
 ; Opened as they are, the files win over the Windows App's own display settings and span
 ; every monitor full screen (use multimon:i:1, or screen mode id's full-screen default).

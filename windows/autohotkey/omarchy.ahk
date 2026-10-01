@@ -143,6 +143,32 @@ OpenRdp(rdpFile, *) {
 #+!r:: OpenRdp("sharedBss.rdpw")
 #+l:: OpenRdp("lanvera.rdpw")
 
+; FreeRDP's /prevent-session-lock:180 for the Windows App: every 3 minutes, a mouse move
+; posted to each session's input window (IHWindowClass), which the client forwards to the
+; remote host, so its idle lock never fires. Posted, not sent: the local mouse does not
+; move, and cloaked sessions on other GlazeWM workspaces get it too. A session you are
+; working in is skipped, since the move jumps the remote cursor to the given point.
+KeepCloudPcsAwake() {
+    static nudge := 0
+    nudge := !nudge ; alternate between two points so every tick is real motion
+    DetectHiddenWindows true
+    for hwnd in WinGetList("ahk_class TscShellContainerClass ahk_exe msrdc.exe") {
+        if WinActive(hwnd) && A_TimeIdlePhysical < 180000
+            continue
+        try PostMessage 0x200, 0, (10 << 16) | (10 + nudge), ControlGetHwnd("IHWindowClass1", hwnd) ; WM_MOUSEMOVE
+    }
+    DetectHiddenWindows false
+}
+SetTimer KeepCloudPcsAwake, 180000
+
+; Kill the focused cloud PC. A locked session has no disconnect button, and closing the
+; window only asks the remote side. Each session is its own msrdc.exe; the remote session
+; stays signed in, so relaunching reconnects to it.
+#^q:: {
+    if WinActive("ahk_class TscShellContainerClass ahk_exe msrdc.exe")
+        ProcessClose WinGetPID("A")
+}
+
 ; ---------------------------------------------------------------------------------------
 ; Windows
 ; ---------------------------------------------------------------------------------------

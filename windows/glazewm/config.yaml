@@ -120,6 +120,24 @@ window_rules:
     match:
       - window_process: { equals: 'claude' }
 
+  # Cloud PC sessions (omarchy.ahk OpenRdp), titled by each resource's remotedesktopname,
+  # which only arrives after the window maps. Chrome is excluded so a tab cannot match.
+  - commands: ['move --workspace 41']
+    on: ['manage', 'title_change']
+    match:
+      - window_title: { includes: 'Cloud PC Enterprise' }
+        window_process: { not_equals: 'chrome' }
+  - commands: ['move --workspace 42']
+    on: ['manage', 'title_change']
+    match:
+      - window_title: { includes: 'SessionDesktop' }
+        window_process: { not_equals: 'chrome' }
+  - commands: ['move --workspace 43']
+    on: ['manage', 'title_change']
+    match:
+      - window_title: { includes: 'Shared BSS' }
+        window_process: { not_equals: 'chrome' }
+
   - commands: ['ignore']
     match:
       - window_process: { equals: 'zebar' }

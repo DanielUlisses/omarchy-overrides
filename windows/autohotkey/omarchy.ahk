@@ -105,8 +105,36 @@ WebApp(url, profile) => Browser(profile, "--app=" url)
 #+g:: WebApp("https://vertexaisearch.cloud.google.com/home/cid/a72e70f2-3125-4270-916e-2c345f90d694", PYTHIAN)
 #+h:: WebApp("https://pythian.atlassian.net/jira/apps/fa75e928-007a-4af4-9530-76503bcd4cba/ea7fda46-2015-4367-bd93-992fbf0c58ca/my-work/week?type=LIST", PYTHIAN)
 
-; Cloud PCs are opened from the Windows App itself: launching its .rdp/.rdpw files spanned
-; every monitor full screen instead of a window on one screen.
+; Cloud PCs, from the .rdp/.rdpw files in %APPDATA%\omarchy\rdp (never in this public repo).
+; Opened as they are, the files win over the Windows App's own display settings and span
+; every monitor full screen (use multimon:i:1, or screen mode id's full-screen default).
+; So each launch opens a regenerated copy with only the display properties rewritten to
+; a window on one monitor, which GlazeWM then tiles onto the client's 4n row. None of
+; those properties are in the files' signscope, so the Microsoft signature stays valid.
+RDP_DIR := A_AppData "\omarchy\rdp\"
+
+OpenRdp(rdpFile, *) {
+    src := RDP_DIR rdpFile
+    if !FileExist(src) {
+        TrayTip "Missing " src, "Cloud PC", 3
+        return
+    }
+    out := ""
+    for line in StrSplit(FileRead(src), "`n", "`r")
+        if line != "" && !RegExMatch(line, "i)^(screen mode id|use multimon|selectedmonitors|singlemoninwindowedmode|maximizetocurrentdisplays|dynamic resolution):")
+            out .= line "`r`n"
+    out .= "screen mode id:i:1`r`nuse multimon:i:0`r`nsinglemoninwindowedmode:i:1`r`ndynamic resolution:i:1`r`n"
+    dir := A_Temp "\omarchy-rdp"
+    DirCreate dir
+    dst := dir "\" rdpFile
+    try FileDelete dst
+    FileAppend out, dst, "UTF-16"
+    Run dst
+}
+
+#+r:: OpenRdp("f5.rdpw")
+#+!r:: OpenRdp("sharedBss.rdpw")
+#+l:: OpenRdp("lanvera.rdpw")
 
 ; ---------------------------------------------------------------------------------------
 ; Windows
@@ -155,12 +183,12 @@ FocusMonitor(step) {
 ; ---------------------------------------------------------------------------------------
 ; Client contexts, ported from bin/omarchy-context on top of GlazeWM workspaces.
 ;   dev monitor:      1 Pythian   2 Lanvera   3 BSS   4 Personal
-;   portrait monitor: 2n browser  3n chat     4n spare (Personal: 34 Spark, 44 Claude)
+;   portrait monitor: 2n browser  3n chat     4n cloud PC (Personal: 34 Spark, 44 Claude)
 ;   Win+F1..F4        switch to that client; pressing it again walks its portrait rows
 ;   Win+F5            walk the current client's portrait rows
 ;   Win+Shift+F1..F4  launch that client's apps onto its workspaces, then switch there
 ;   Win+Shift+Q       close the current client's apps
-; Slack, Teams, Spark, WhatsApp and Claude are placed by GlazeWM's window rules; Chrome
+; Slack, Teams, Spark, WhatsApp, Claude and the cloud PCs are placed by GlazeWM's rules; Chrome
 ; shares one process across profiles, so its windows are placed here, by opening them
 ; on the browser row.
 ; ---------------------------------------------------------------------------------------
@@ -168,10 +196,17 @@ FocusMonitor(step) {
 GLAZEWM := A_ProgramFiles "\glzr.io\GlazeWM\cli\glazewm.exe"
 Glaze(cmd) => RunWait('"' GLAZEWM '" command ' cmd, , "Hide")
 
+; win identifies a running copy (AutoHotkey WinTitle); cloud PC sessions are titled by the
+; resource's remotedesktopname from its .rdpw.
 CONTEXTS := Map(
-    1, {chrome: PYTHIAN, rows: [21, 31], apps: [{exe: "slack.exe", run: '"' LOCALAPPDATA '\slack\slack.exe"'}]},
-    2, {chrome: LANVERA, rows: [22, 32], apps: [{exe: "ms-teams.exe", run: StoreApp("MSTeams_8wekyb3d8bbwe!MSTeams")}]},
-    3, {chrome: BSS, rows: [23], apps: []},
+    1, {chrome: PYTHIAN, rows: [21, 31, 41], apps: [
+        {win: "ahk_exe slack.exe", run: '"' LOCALAPPDATA '\slack\slack.exe"'},
+        {win: "Cloud PC Enterprise", run: OpenRdp.Bind("f5.rdpw")}]},
+    2, {chrome: LANVERA, rows: [22, 32, 42], apps: [
+        {win: "ahk_exe ms-teams.exe", run: StoreApp("MSTeams_8wekyb3d8bbwe!MSTeams")},
+        {win: "SessionDesktop", run: OpenRdp.Bind("lanvera.rdpw")}]},
+    3, {chrome: BSS, rows: [23, 43], apps: [
+        {win: "Shared BSS", run: OpenRdp.Bind("sharedBss.rdpw")}]},
     4, {chrome: PERSONAL, rows: [24, 34, 44], apps: []},
 )
 
@@ -225,8 +260,11 @@ LaunchContext(n, *) {
         }
     }
     for app in ctx.apps
-        if !WinExist("ahk_exe " app.exe) {
-            Run app.run
+        if !WinExist(app.win) {
+            if app.run is Func
+                app.run()
+            else
+                Run app.run
             Sleep 800 ; stagger, as omarchy-context does, so windows map in order
         }
     rowIndex[n] := 1
@@ -241,7 +279,7 @@ QuitContext(*) {
     if contextChrome.Has(n) && WinExist("ahk_id " contextChrome[n])
         WinClose "ahk_id " contextChrome[n]
     for app in CONTEXTS[n].apps
-        for hwnd in WinGetList("ahk_exe " app.exe)
+        for hwnd in WinGetList(app.win)
             WinClose "ahk_id " hwnd
 }
 

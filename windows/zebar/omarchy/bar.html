@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="root">
+      <div class="app">
+        <div class="left"><div id="workspaces"></div></div>
+        <div class="center" id="date"></div>
+        <div class="right">
+          <div class="claude" id="claude" title="Claude Code usage"></div>
+          <div id="cpu"></div>
+          <div id="memory"></div>
+          <div id="battery"></div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import * as zebar from 'https://esm.sh/zebar@3.0';
+
+      const providers = zebar.createProviderGroup({
+        glazewm: { type: 'glazewm' },
+        cpu: { type: 'cpu' },
+        memory: { type: 'memory' },
+        battery: { type: 'battery' },
+        date: { type: 'date', formatting: 'EEE d MMM HH:mm' },
+      });
+
+      const $ = id => document.getElementById(id);
+      const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+      function render(o) {
+        if (o.glazewm) {
+          $('workspaces').innerHTML = o.glazewm.currentWorkspaces
+            .map(w => `<button class="workspace ${w.hasFocus ? 'focused' : ''} ${w.isDisplayed ? 'displayed' : ''}" data-ws="${esc(w.name)}">${esc(w.displayName ?? w.name)}</button>`)
+            .join('');
+        }
+        if (o.date) $('date').textContent = o.date.formatted;
+        if (o.cpu) $('cpu').innerHTML = `<i class="nf nf-oct-cpu"></i>${Math.round(o.cpu.usage)}%`;
+        if (o.memory) $('memory').innerHTML = `<i class="nf nf-fae-chip"></i>${Math.round(o.memory.usage)}%`;
+        if (o.battery) $('battery').innerHTML = `<i class="nf nf-fa-battery_3"></i>${Math.round(o.battery.chargePercent)}%${o.battery.isCharging ? '+' : ''}`;
+      }
+
+      $('workspaces').addEventListener('click', e => {
+        const ws = e.target.closest('[data-ws]')?.dataset.ws;
+        if (ws) providers.outputMap.glazewm?.runCommand(`focus --workspace ${ws}`);
+      });
+
+      render(providers.outputMap);
+      providers.onOutput(() => render(providers.outputMap));
+
+      // --- Claude subscription usage -------------------------------------------------
+      // claude-acc lives in WSL; `claude-acc usage` prints, per account:
+      //     pythian  <dsilva@pythian.com>
+      //       5h  [████░░░░]   19%  resets in 2d 15h
+      //       7d  [██░░░░░░]    8%
+      // The command is allow-listed exactly in zpack.json.
+      const CLAUDE_ACC = ['-d', 'Arch', '-e', '/home/daniel/.claude-switch/bin/claude-acc', 'usage'];
+
+      function parseUsage(text) {
+        const accounts = [];
+        for (const raw of text.replace(/\x1b\[[0-9;]*m/g, '').split(/\r?\n/)) {
+          const header = raw.match(/^ {4}(\S+)(?:\s+<([^>]+)>|\s+\(standard\))/);
+          if (header) {
+            accounts.push({ name: header[1] === '~/.claude/' ? 'default' : header[1], email: header[2] ?? '', windows: {} });
+            continue;
+          }
+          const win = raw.match(/^\s+(5h|7d)\s+\[[^\]]*\]\s+(\d+)%\s*(?:resets in (.+))?/);
+          if (win && accounts.length) accounts.at(-1).windows[win[1]] = { pct: +win[2], resets: win[3]?.trim() };
+        }
+        return accounts;
+      }
+
+      const level = pct => (pct >= 90 ? 'crit' : pct >= 70 ? 'warn' : '');
+      const cell = (label, w) => w ? `<span class="label">${label}</span><span class="${level(w.pct)}">${w.pct}%</span> ` : '';
+
+      async function refreshClaude() {
+        try {
+          const { stdout, stderr, code } = await zebar.shellExec('wsl', CLAUDE_ACC);
+          const accounts = parseUsage(stdout);
+          if (!accounts.length) throw new Error(stderr || `claude-acc exited ${code}`);
+          $('claude').innerHTML = '<i class="nf nf-md-robot"></i>' + accounts
+            .map(a => `<span class="account">${esc(a.name)} ${cell('5h', a.windows['5h'])}${cell('7d', a.windows['7d'])}</span>`)
+            .join('');
+          $('claude').title = accounts
+            .map(a => `${a.name}${a.email ? ` <${a.email}>` : ''}\n` + ['5h', '7d']
+              .filter(k => a.windows[k])
+              .map(k => `  ${k}: ${a.windows[k].pct}%${a.windows[k].resets ? `, resets in ${a.windows[k].resets}` : ''}`)
+              .join('\n'))
+            .join('\n');
+        } catch (err) {
+          $('claude').innerHTML = `<i class="nf nf-md-robot"></i><span class="error">usage unavailable</span>`;
+          $('claude').title = String(err?.message ?? err);
+        }
+      }
+
+      refreshClaude();
+      setInterval(refreshClaude, 5 * 60 * 1000);
+      $('claude').addEventListener('click', refreshClaude);
+    </script>
+  </body>
+</html>

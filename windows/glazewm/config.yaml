@@ -1,0 +1,301 @@
+# GlazeWM as Hyprland: Omarchy's tiling bindings (default/hypr/bindings/tiling.lua) with
+# Win as Super, and the workspace layout bin/omarchy-context uses on Linux.
+# Lives at %USERPROFILE%\.glzr\glazewm\config.yaml; reload with Win+Alt+Shift+R.
+# App launchers and the client-context keys stay in windows/autohotkey/omarchy.ahk.
+
+general:
+  # omarchy.ahk starts GlazeWM, not the other way round (see the top of that script).
+  startup_commands: ['shell-exec zebar']
+  shutdown_commands: ['shell-exec taskkill /IM zebar.exe /F']
+  config_reload_commands: []
+  focus_follows_cursor: false
+  # Off: omarchy.ahk focuses workspaces by name (client contexts), and focusing the one
+  # already shown must not bounce back to the previous one. Win+S toggles in omarchy.ahk.
+  toggle_workspace_on_refocus: false
+  cursor_jump:
+    enabled: true
+    trigger: 'monitor_focus'
+  hide_method: 'cloak'
+  show_all_in_taskbar: false
+
+# No gaps (Omarchy's gaps_in/gaps_out = 0 look); the top only leaves room for the 30px bar.
+gaps:
+  scale_with_dpi: true
+  inner_gap: '0px'
+  outer_gap:
+    top: '30px'
+    right: '0px'
+    bottom: '0px'
+    left: '0px'
+
+# Borders in the cyberpunk-reloaded theme's colors; no title bars, as on Hyprland.
+window_effects:
+  focused_window:
+    border:
+      enabled: true
+      color: '#fee801'
+    hide_title_bar:
+      enabled: true
+    corner_style:
+      enabled: true
+      style: 'small_rounded'
+    transparency:
+      enabled: false
+      opacity: '95%'
+  other_windows:
+    border:
+      enabled: true
+      color: '#071520'
+    hide_title_bar:
+      enabled: true
+    corner_style:
+      enabled: true
+      style: 'small_rounded'
+    transparency:
+      enabled: false
+      opacity: '95%'
+
+window_behavior:
+  initial_state: 'tiling'
+  state_defaults:
+    floating:
+      centered: true
+      shown_on_top: false
+    fullscreen:
+      maximized: false
+      shown_on_top: false
+
+# Monitors are indexed left to right:
+#   0 = portrait LF24T35 (DP-5, comms)   1 = landscape LF24T35 (DP-6, dev)   2 = laptop (eDP-1)
+# As in omarchy-context: the dev monitor has one workspace per client (1 Pythian,
+# 2 Lanvera, 3 BSS, 4 Personal), the portrait one holds one app per workspace in rows
+# (2n browser, 3n chat, 4n spare), and the laptop keeps 10 to itself.
+workspaces:
+  - { name: '1', bind_to_monitor: 1 }
+  - { name: '2', bind_to_monitor: 1 }
+  - { name: '3', bind_to_monitor: 1 }
+  - { name: '4', bind_to_monitor: 1 }
+  - { name: '5', bind_to_monitor: 1 }
+  - { name: '6', bind_to_monitor: 1 }
+  - { name: '7', bind_to_monitor: 1 }
+  - { name: '8', bind_to_monitor: 1 }
+  - { name: '9', bind_to_monitor: 1 }
+  - { name: '10', bind_to_monitor: 2, keep_alive: true }
+  - { name: '21', bind_to_monitor: 0 }
+  - { name: '22', bind_to_monitor: 0 }
+  - { name: '23', bind_to_monitor: 0 }
+  - { name: '24', bind_to_monitor: 0 }
+  - { name: '31', bind_to_monitor: 0 }
+  - { name: '32', bind_to_monitor: 0 }
+  - { name: '33', bind_to_monitor: 0 }
+  - { name: '34', bind_to_monitor: 0 }
+  - { name: '41', bind_to_monitor: 0 }
+  - { name: '42', bind_to_monitor: 0 }
+  - { name: '43', bind_to_monitor: 0 }
+  - { name: '44', bind_to_monitor: 0 }
+  # Omarchy's special:scratchpad; not bound, so it opens on whichever monitor has focus.
+  - { name: 'S', display_name: 'scratch' }
+
+window_rules:
+  # Omarchy-context placement. Chrome cannot be told apart by profile (one process),
+  # so browsers are placed by the context launch in omarchy.ahk instead.
+  - commands: ['move --workspace 31']
+    match:
+      - window_process: { equals: 'slack' }
+  - commands: ['move --workspace 32']
+    match:
+      - window_process: { equals: 'ms-teams' }
+  - commands: ['move --workspace 34']
+    match:
+      - window_process: { equals: 'Spark Desktop' }
+        window_title: { not_equals: 'Active Transcription' }
+  # Chrome app windows carry only the page title; a normal tab would end in " - Google Chrome".
+  - commands: ['move --workspace 34']
+    on: ['manage', 'title_change']
+    match:
+      - window_process: { equals: 'chrome' }
+        window_title: { regex: '^(\(\d+\) )?WhatsApp$' }
+  - commands: ['move --workspace 44']
+    match:
+      - window_process: { equals: 'claude' }
+
+  - commands: ['ignore']
+    match:
+      - window_process: { equals: 'zebar' }
+      - window_title: { regex: '[Pp]icture.in.[Pp]icture' }
+        window_class: { regex: 'Chrome_WidgetWin_1|MozillaDialogClass' }
+      - window_process: { equals: 'PowerToys' }
+        window_class: { regex: 'HwndWrapper\[PowerToys\.PowerAccent.*?\]' }
+      - window_title: { equals: 'Command Palette' }
+        window_class: { equals: 'WinUIDesktopWin32WindowClass' }
+      - window_process: { equals: 'Microsoft.CmdPal.UI' }
+      - window_process: { equals: 'PowerToys' }
+        window_title: { regex: '.*? - Peek' }
+      - window_process: { equals: 'EXCEL' }
+        window_class: { not_regex: 'XLMAIN' }
+      - window_process: { equals: 'WINWORD' }
+        window_class: { not_regex: 'OpusApp' }
+      - window_process: { equals: 'POWERPNT' }
+        window_class: { not_regex: 'PPTFrameClass' }
+      # Spark's always-on-top transcription widget and 1Password Quick Access.
+      - window_process: { equals: 'Spark Desktop' }
+        window_title: { equals: 'Active Transcription' }
+      - window_process: { equals: '1Password' }
+        window_title: { regex: '^Quick Access' }
+
+  # Login and auth popups float instead of squeezing into the tiling.
+  - commands: ['set-floating']
+    match:
+      - window_process: { equals: '1Password' }
+        window_title: { regex: 'Unlock|Authorize|Approve' }
+
+binding_modes:
+  - name: 'resize'
+    keybindings:
+      - commands: ['resize --width -2%']
+        bindings: ['left']
+      - commands: ['resize --width +2%']
+        bindings: ['right']
+      - commands: ['resize --height +2%']
+        bindings: ['up']
+      - commands: ['resize --height -2%']
+        bindings: ['down']
+      - commands: ['wm-disable-binding-mode --name resize']
+        bindings: ['escape', 'enter']
+
+keybindings:
+  # Windows
+  - commands: ['close']
+    bindings: ['lwin+w', 'lwin+q']
+  - commands: ['toggle-tiling-direction']
+    bindings: ['lwin+j']
+  - commands: ['toggle-floating --centered']
+    bindings: ['lwin+t']
+  - commands: ['toggle-fullscreen']
+    bindings: ['lwin+f']
+  - commands: ['toggle-minimized']
+    bindings: ['lwin+m']
+  - commands: ['wm-enable-binding-mode --name resize']
+    bindings: ['lwin+r']
+
+  # Focus and swap by direction; at a monitor edge both carry on into the next monitor.
+  - commands: ['focus --direction left']
+    bindings: ['lwin+left']
+  - commands: ['focus --direction right']
+    bindings: ['lwin+right']
+  - commands: ['focus --direction up']
+    bindings: ['lwin+up']
+  - commands: ['focus --direction down']
+    bindings: ['lwin+down']
+  - commands: ['move --direction left']
+    bindings: ['lwin+shift+left']
+  - commands: ['move --direction right']
+    bindings: ['lwin+shift+right']
+  - commands: ['move --direction up']
+    bindings: ['lwin+shift+up']
+  - commands: ['move --direction down']
+    bindings: ['lwin+shift+down']
+
+  # Move the whole workspace to another monitor.
+  - commands: ['move-workspace --direction left']
+    bindings: ['lwin+shift+alt+left']
+  - commands: ['move-workspace --direction right']
+    bindings: ['lwin+shift+alt+right']
+  - commands: ['move-workspace --direction up']
+    bindings: ['lwin+shift+alt+up']
+  - commands: ['move-workspace --direction down']
+    bindings: ['lwin+shift+alt+down']
+
+  # Resize (Omarchy's Super+minus/equal family).
+  - commands: ['resize --width -5%']
+    bindings: ['lwin+oem_minus']
+  - commands: ['resize --width +5%']
+    bindings: ['lwin+oem_plus']
+  - commands: ['resize --height -5%']
+    bindings: ['lwin+shift+oem_minus']
+  - commands: ['resize --height +5%']
+    bindings: ['lwin+shift+oem_plus']
+
+  # Workspaces
+  - commands: ['focus --next-active-workspace']
+    bindings: ['lwin+tab']
+  - commands: ['focus --prev-active-workspace']
+    bindings: ['lwin+shift+tab']
+  - commands: ['focus --recent-workspace']
+    bindings: ['lwin+ctrl+tab']
+
+  - commands: ['focus --workspace 1']
+    bindings: ['lwin+1']
+  - commands: ['focus --workspace 2']
+    bindings: ['lwin+2']
+  - commands: ['focus --workspace 3']
+    bindings: ['lwin+3']
+  - commands: ['focus --workspace 4']
+    bindings: ['lwin+4']
+  - commands: ['focus --workspace 5']
+    bindings: ['lwin+5']
+  - commands: ['focus --workspace 6']
+    bindings: ['lwin+6']
+  - commands: ['focus --workspace 7']
+    bindings: ['lwin+7']
+  - commands: ['focus --workspace 8']
+    bindings: ['lwin+8']
+  - commands: ['focus --workspace 9']
+    bindings: ['lwin+9']
+  - commands: ['focus --workspace 10']
+    bindings: ['lwin+0']
+
+  - commands: ['move --workspace 1', 'focus --workspace 1']
+    bindings: ['lwin+shift+1']
+  - commands: ['move --workspace 2', 'focus --workspace 2']
+    bindings: ['lwin+shift+2']
+  - commands: ['move --workspace 3', 'focus --workspace 3']
+    bindings: ['lwin+shift+3']
+  - commands: ['move --workspace 4', 'focus --workspace 4']
+    bindings: ['lwin+shift+4']
+  - commands: ['move --workspace 5', 'focus --workspace 5']
+    bindings: ['lwin+shift+5']
+  - commands: ['move --workspace 6', 'focus --workspace 6']
+    bindings: ['lwin+shift+6']
+  - commands: ['move --workspace 7', 'focus --workspace 7']
+    bindings: ['lwin+shift+7']
+  - commands: ['move --workspace 8', 'focus --workspace 8']
+    bindings: ['lwin+shift+8']
+  - commands: ['move --workspace 9', 'focus --workspace 9']
+    bindings: ['lwin+shift+9']
+  - commands: ['move --workspace 10', 'focus --workspace 10']
+    bindings: ['lwin+shift+0']
+
+  # Move silently (Omarchy's Super+Shift+Alt+N).
+  - commands: ['move --workspace 1']
+    bindings: ['lwin+shift+alt+1']
+  - commands: ['move --workspace 2']
+    bindings: ['lwin+shift+alt+2']
+  - commands: ['move --workspace 3']
+    bindings: ['lwin+shift+alt+3']
+  - commands: ['move --workspace 4']
+    bindings: ['lwin+shift+alt+4']
+  - commands: ['move --workspace 5']
+    bindings: ['lwin+shift+alt+5']
+  - commands: ['move --workspace 6']
+    bindings: ['lwin+shift+alt+6']
+  - commands: ['move --workspace 7']
+    bindings: ['lwin+shift+alt+7']
+  - commands: ['move --workspace 8']
+    bindings: ['lwin+shift+alt+8']
+  - commands: ['move --workspace 9']
+    bindings: ['lwin+shift+alt+9']
+  - commands: ['move --workspace 10']
+    bindings: ['lwin+shift+alt+0']
+
+  # Scratchpad (Omarchy's special:scratchpad): Win+S / Win+` toggles it from omarchy.ahk.
+  - commands: ['move --workspace S']
+    bindings: ['lwin+alt+s', 'lwin+shift+oem_tilde']
+
+  # GlazeWM itself
+  - commands: ['wm-reload-config']
+    bindings: ['lwin+alt+shift+r']
+  - commands: ['wm-toggle-pause']
+    bindings: ['lwin+alt+p']
+  - commands: ['wm-redraw']
+    bindings: ['lwin+alt+shift+w']

@@ -112,24 +112,36 @@ if command -v cmd.exe >/dev/null && cmd.exe /c ver >/dev/null 2>&1; then
   done
   echo "Installed Alacritty config and JetBrainsMono Nerd Font on Windows"
 
-  # Omarchy keybindings (Win as Super: apps, desktops, windows) from windows/autohotkey, started at login.
-  # The DLL is Windows-release specific: 2024-12-16 is the 24H2 build, verified on 26300.
+  # GlazeWM (Hyprland's role) and Zebar (the bar, with Claude usage) from windows/glazewm
+  # and windows/zebar, into %USERPROFILE%\.glzr. GlazeWM starts Zebar itself.
+  (cd /mnt/c && for id in glzr-io.glazewm glzr-io.zebar; do
+    cmd.exe /c "winget install --id $id --silent --accept-package-agreements --accept-source-agreements" >/dev/null
+  done)
+  mkdir -p "$userprofile/.glzr/glazewm" "$userprofile/.glzr/zebar/omarchy"
+  cp "$REPO_DIR/windows/glazewm/config.yaml" "$userprofile/.glzr/glazewm/"
+  cp "$REPO_DIR/windows/zebar/settings.json" "$userprofile/.glzr/zebar/"
+  cp "$REPO_DIR"/windows/zebar/omarchy/* "$userprofile/.glzr/zebar/omarchy/"
+  echo "Installed GlazeWM and Zebar"
+
+  # Omarchy app launchers and client-context keys (Win as Super) from windows/autohotkey.
+  # The script is what starts at login, and it starts GlazeWM, so its keyboard hook can
+  # stay on top of GlazeWM's (see the top of omarchy.ahk).
   ahk_exe="$localappdata/Programs/AutoHotkey/v2/AutoHotkey64.exe"
   [ -f "$ahk_exe" ] ||
     (cd /mnt/c && cmd.exe /c "winget install --id AutoHotkey.AutoHotkey --scope user --silent --accept-package-agreements --accept-source-agreements" >/dev/null)
   mkdir -p "$appdata/autohotkey"
   cp "$REPO_DIR/windows/autohotkey/omarchy.ahk" "$appdata/autohotkey/"
-  [ -f "$appdata/autohotkey/VirtualDesktopAccessor.dll" ] ||
-    curl -fsSL https://github.com/Ciantic/VirtualDesktopAccessor/releases/download/2024-12-16-windows11/VirtualDesktopAccessor.dll \
-      -o "$appdata/autohotkey/VirtualDesktopAccessor.dll"
   (cd /mnt/c && powershell.exe -NoProfile -Command '
     $exe = "$env:LOCALAPPDATA\Programs\AutoHotkey\v2\AutoHotkey64.exe"
     $ahk = "$env:APPDATA\autohotkey\omarchy.ahk"
-    $lnk = Join-Path ([Environment]::GetFolderPath("Startup")) "omarchy.lnk"
-    $s = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
+    $startup = [Environment]::GetFolderPath("Startup")
+    Remove-Item (Join-Path $startup "glazewm.lnk") -ErrorAction SilentlyContinue
+    $s = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $startup "omarchy.lnk"))
     $s.TargetPath = $exe; $s.Arguments = "`"$ahk`""; $s.WorkingDirectory = Split-Path $ahk; $s.Save()
-    Start-Process $exe -ArgumentList "`"$ahk`""' >/dev/null)
-  mkdir -p "$appdata/omarchy/rdp" # cloud PC .rdp files go here by hand, never in this public repo
+    Start-Process $exe -ArgumentList "`"$ahk`""
+    if (Get-Process glazewm -ErrorAction SilentlyContinue) {
+      & "$env:ProgramFiles\glzr.io\GlazeWM\cli\glazewm.exe" command wm-reload-config
+    }' >/dev/null)
   echo "Installed AutoHotkey Omarchy keybindings"
 else
   echo "NOTE: Windows interop unavailable, skipped Alacritty config + font" >&2

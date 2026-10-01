@@ -3,54 +3,31 @@
 
 ; Omarchy keybindings on Windows: Super becomes Win. Mirrors Omarchy's defaults plus
 ; overrides/omarchy-overrides.lua, remapped to the apps and Chrome profiles on this box.
-; Win+key combos Windows already owns (Win+E, Win+W, Win+1..9, Win+Shift+S, ...) are taken over.
+; Tiling, workspaces and window rules belong to GlazeWM (windows/glazewm/config.yaml);
+; this script keeps the app launchers and the omarchy-context client keys.
 
 SetTitleMatchMode 2
 
-; ---------------------------------------------------------------------------------------
-; Numbered workspaces on top of Windows virtual desktops
-;   Win+1..9        go to desktop N
-;   Win+Shift+1..9  move the active window to desktop N
-; Missing desktops are created on the way, like Hyprland workspaces.
-; Needs VirtualDesktopAccessor.dll next to this script, from
-; github.com/Ciantic/VirtualDesktopAccessor (the build must match the Windows release).
-; ---------------------------------------------------------------------------------------
+; This script is the one started at login (Startup folder), and it starts GlazeWM. Both
+; hook the keyboard and the newest hook sees keys first, so whenever GlazeWM (re)starts,
+; the hook is reinstalled on top: the app keys here must reach AutoHotkey, the rest
+; passes through to GlazeWM.
+GLAZEWM_EXE := A_ProgramFiles "\glzr.io\GlazeWM\glazewm.exe"
+glazewmPid := 0
 
-dllPath := A_ScriptDir "\VirtualDesktopAccessor.dll"
-hVDA := DllCall("LoadLibrary", "Str", dllPath, "Ptr")
-if !hVDA {
-    MsgBox "Could not load " dllPath
-    ExitApp
+KeepHookOnTop() {
+    global glazewmPid
+    pid := ProcessExist("glazewm.exe")
+    if pid && pid != glazewmPid {
+        glazewmPid := pid
+        Sleep 1500 ; let GlazeWM finish installing its own hook first
+        InstallKeybdHook true, true
+    }
 }
 
-VDA(name) => DllCall("GetProcAddress", "Ptr", hVDA, "AStr", name, "Ptr")
-GetDesktopCountProc := VDA("GetDesktopCount")
-CreateDesktopProc := VDA("CreateDesktop")
-GoToDesktopNumberProc := VDA("GoToDesktopNumber")
-MoveWindowToDesktopNumberProc := VDA("MoveWindowToDesktopNumber")
-
-EnsureDesktops(n) {
-    while DllCall(GetDesktopCountProc, "Int") < n
-        DllCall(CreateDesktopProc, "Int")
-}
-
-GoToDesktop(n, *) {
-    EnsureDesktops(n)
-    DllCall(GoToDesktopNumberProc, "Int", n - 1, "Int")
-}
-
-MoveActiveToDesktop(n, *) {
-    hwnd := WinExist("A")
-    if !hwnd
-        return
-    EnsureDesktops(n)
-    DllCall(MoveWindowToDesktopNumberProc, "Ptr", hwnd, "Int", n - 1, "Int")
-}
-
-Loop 9 {
-    Hotkey "#" A_Index, GoToDesktop.Bind(A_Index)
-    Hotkey "#+" A_Index, MoveActiveToDesktop.Bind(A_Index)
-}
+if !ProcessExist("glazewm.exe") && FileExist(GLAZEWM_EXE)
+    Run '"' GLAZEWM_EXE '" start'
+SetTimer KeepHookOnTop, 3000
 
 ; ---------------------------------------------------------------------------------------
 ; Launch helpers
@@ -95,16 +72,6 @@ Terminal(cmd := "") {
 Browser(profile, extra := "") => Run('"' CHROME '" --profile-directory="' profile '" ' extra)
 WebApp(url, profile) => Browser(profile, "--app=" url)
 
-; Cloud PC files are kept out of the (public) repo, in %APPDATA%\omarchy\rdp. The AVD ones
-; are .rdpw (Windows App format); plain .rdp opens in Remote Desktop Connection.
-OpenRdp(file) {
-    file := A_AppData "\omarchy\rdp\" file
-    if FileExist(file)
-        Run file
-    else
-        TrayTip "Missing " file, "Cloud PC", 3
-}
-
 ; ---------------------------------------------------------------------------------------
 ; Applications
 ; ---------------------------------------------------------------------------------------
@@ -138,10 +105,8 @@ OpenRdp(file) {
 #+g:: WebApp("https://vertexaisearch.cloud.google.com/home/cid/a72e70f2-3125-4270-916e-2c345f90d694", PYTHIAN)
 #+h:: WebApp("https://pythian.atlassian.net/jira/apps/fa75e928-007a-4af4-9530-76503bcd4cba/ea7fda46-2015-4367-bd93-992fbf0c58ca/my-work/week?type=LIST", PYTHIAN)
 
-#+r:: OpenRdp("f5.rdpw")
-#+!r:: OpenRdp("sharedBss.rdpw")
-#+l:: OpenRdp("lanvera.rdpw")
-#+^r:: OpenRdp("Pythian.rdp") ; 172.16.0.16
+; Cloud PCs are opened from the Windows App itself: launching its .rdp/.rdpw files spanned
+; every monitor full screen instead of a window on one screen.
 
 ; ---------------------------------------------------------------------------------------
 ; Windows
@@ -152,21 +117,6 @@ IsDesktopShell(hwnd) {
     return cls = "Progman" || cls = "WorkerW" || cls = "Shell_TrayWnd" || cls = "Shell_SecondaryTrayWnd"
 }
 
-#w:: {
-    hwnd := WinExist("A")
-    if hwnd && !IsDesktopShell(hwnd)
-        WinClose hwnd
-}
-
-#f:: {
-    hwnd := WinExist("A")
-    if !hwnd || IsDesktopShell(hwnd)
-        return
-    if WinGetMinMax(hwnd) = 1
-        WinRestore hwnd
-    else
-        WinMaximize hwnd
-}
 
 ; Focus the topmost window on the next/previous monitor.
 MonitorOf(hwnd) {
@@ -203,160 +153,115 @@ FocusMonitor(step) {
 ^!+Tab:: FocusMonitor(-1)
 
 ; ---------------------------------------------------------------------------------------
-; Client contexts, like bin/omarchy-context: one virtual desktop per client.
-;   1 Pythian   2 Lanvera   3 BSS   4 Personal
-;   Win+1..4           switch to that client (the desktop keys above)
-;   Win+Shift+F1..F4   launch that client's apps onto its desktop, then switch there
-;   Win+Shift+Q        close the current client's apps
-; Window rules place an app on its client's desktop when its window opens, however it was
-; started. A virtual desktop spans every monitor, so there are no per-monitor rows here.
+; Client contexts, ported from bin/omarchy-context on top of GlazeWM workspaces.
+;   dev monitor:      1 Pythian   2 Lanvera   3 BSS   4 Personal
+;   portrait monitor: 2n browser  3n chat     4n spare (Personal: 34 Spark, 44 Claude)
+;   Win+F1..F4        switch to that client; pressing it again walks its portrait rows
+;   Win+F5            walk the current client's portrait rows
+;   Win+Shift+F1..F4  launch that client's apps onto its workspaces, then switch there
+;   Win+Shift+Q       close the current client's apps
+; Slack, Teams, Spark, WhatsApp and Claude are placed by GlazeWM's window rules; Chrome
+; shares one process across profiles, so its windows are placed here, by opening them
+; on the browser row.
 ; ---------------------------------------------------------------------------------------
 
-GetCurrentDesktopNumberProc := VDA("GetCurrentDesktopNumber")
-GetWindowDesktopNumberProc := VDA("GetWindowDesktopNumber")
+GLAZEWM := A_ProgramFiles "\glzr.io\GlazeWM\cli\glazewm.exe"
+Glaze(cmd) => RunWait('"' GLAZEWM '" command ' cmd, , "Hide")
 
-RDP_DIR := A_AppData "\omarchy\rdp\"
+CONTEXTS := Map(
+    1, {chrome: PYTHIAN, rows: [21, 31], apps: [{exe: "slack.exe", run: '"' LOCALAPPDATA '\slack\slack.exe"'}]},
+    2, {chrome: LANVERA, rows: [22, 32], apps: [{exe: "ms-teams.exe", run: StoreApp("MSTeams_8wekyb3d8bbwe!MSTeams")}]},
+    3, {chrome: BSS, rows: [23], apps: []},
+    4, {chrome: PERSONAL, rows: [24, 34, 44], apps: []},
+)
 
-; exe and/or title (substring) identify the window. run marks an app the context launches.
-; Chrome app windows are titled by the page alone ("WhatsApp"); a normal tab carries
-; " - Google Chrome", so a tab called WhatsApp does not drag the whole browser along.
-RULES := [
-    {desktop: 1, exe: "slack.exe", run: '"' LOCALAPPDATA '\slack\slack.exe"'},
-    {desktop: 1, title: "Cloud PC Enterprise", run: RDP_DIR "f5.rdpw"},
-    {desktop: 2, exe: "ms-teams.exe", run: StoreApp("MSTeams_8wekyb3d8bbwe!MSTeams")},
-    {desktop: 2, title: "SessionDesktop", run: RDP_DIR "lanvera.rdpw"},
-    {desktop: 3, title: "Shared BSS", run: RDP_DIR "sharedBss.rdpw"},
-    {desktop: 4, exe: "mstsc.exe", title: "172.16.0.16", run: RDP_DIR "Pythian.rdp"},
-    {desktop: 4, exe: "Spark Desktop.exe"},
-    {desktop: 4, exe: "claude.exe"},
-    {desktop: 4, exe: "chrome.exe", title: "WhatsApp", appOnly: true},
-]
+; Kept here rather than queried from GlazeWM: a stale guess only costs one extra keypress.
+currentContext := 0
+rowIndex := Map(1, 1, 2, 1, 3, 1, 4, 1)
+contextChrome := Map()
 
-; Chrome shares one process across profiles, so its windows cannot be told apart by rule;
-; like omarchy-context, the context launch places them instead (by opening them on the
-; client's desktop).
-CONTEXT_CHROME := Map(1, PYTHIAN, 2, LANVERA, 3, BSS, 4, PERSONAL)
-
-RuleMatches(rule, hwnd) {
-    try {
-        if rule.HasProp("exe") && WinGetProcessName(hwnd) != rule.exe
-            return false
-        title := WinGetTitle(hwnd)
-    } catch
-        return false
-    if rule.HasProp("title") && !InStr(title, rule.title)
-        return false
-    if rule.HasProp("appOnly") && InStr(title, " - Google Chrome")
-        return false
-    return true
-}
-
-WindowDesktop(hwnd) => DllCall(GetWindowDesktopNumberProc, "Ptr", hwnd, "Int") + 1
-CurrentDesktop() => DllCall(GetCurrentDesktopNumberProc, "Int") + 1
-
-MoveToDesktop(hwnd, n) {
-    EnsureDesktops(n)
-    DllCall(MoveWindowToDesktopNumberProc, "Ptr", hwnd, "Int", n - 1, "Int")
-}
-
-; Rules apply once, while a window is new (titles often arrive a moment after the window
-; does). Moving it somewhere else by hand later sticks, as with Hyprland window rules.
-created := Map()
-placed := Map()
-
-PlaceWindow(hwnd) {
-    if placed.Has(hwnd) || !created.Has(hwnd) || A_TickCount - created[hwnd] > 15000
-        return
-    for rule in RULES {
-        if RuleMatches(rule, hwnd) {
-            placed[hwnd] := true
-            if WindowDesktop(hwnd) != rule.desktop
-                MoveToDesktop(hwnd, rule.desktop)
-            return
+; Same client: advance the portrait row only, so focus stays where you were typing.
+; Another client: land on its browser row, then on its dev workspace. (Refocusing the
+; workspace already shown would toggle back, so a single-row client stays put.)
+SwitchContext(n, *) {
+    global currentContext
+    rows := CONTEXTS[n].rows
+    if n = currentContext {
+        if rows.Length > 1 {
+            rowIndex[n] := Mod(rowIndex[n], rows.Length) + 1
+            Glaze("focus --workspace " rows[rowIndex[n]])
         }
+        return
     }
+    rowIndex[n] := 1
+    Glaze("focus --workspace " rows[1])
+    Glaze("focus --workspace " n)
+    currentContext := n
 }
 
-ShellMessage(wParam, lParam, *) {
-    static HSHELL_WINDOWCREATED := 1, HSHELL_REDRAW := 6
-    if wParam = HSHELL_WINDOWCREATED {
-        created[lParam] := A_TickCount
-        for delay in [300, 1500, 5000]
-            SetTimer PlaceWindow.Bind(lParam), -delay
-    } else if wParam = HSHELL_REDRAW && created.Has(lParam) {
-        PlaceWindow(lParam)
-    }
-}
-
-DllCall("RegisterShellHookWindow", "Ptr", A_ScriptHwnd)
-OnMessage(DllCall("RegisterWindowMessage", "Str", "SHELLHOOK"), ShellMessage)
-
-; Forget windows that are long gone so the maps do not grow forever.
-SetTimer () => (PruneMap(created), PruneMap(placed)), 600000
-PruneMap(m) {
-    for hwnd in [m*]
-        if !WinExist("ahk_id " hwnd)
-            m.Delete(hwnd)
-}
-
-MatchingWindows(rule) {
-    found := []
-    for hwnd in WinGetList()
-        if RuleMatches(rule, hwnd)
-            found.Push(hwnd)
+ChromeWindows() {
+    found := Map()
+    for hwnd in WinGetList("ahk_exe chrome.exe ahk_class Chrome_WidgetWin_1")
+        if InStr(WinGetTitle(hwnd), " - Google Chrome")
+            found[hwnd] := true
     return found
 }
 
-ChromeOnDesktop(n) {
-    for hwnd in WinGetList("ahk_exe chrome.exe ahk_class Chrome_WidgetWin_1")
-        if WinGetTitle(hwnd) != "" && InStr(WinGetTitle(hwnd), " - Google Chrome") && WindowDesktop(hwnd) = n
-            return true
-    return false
-}
-
-; Idempotent, like omarchy-context launch: running apps are pulled onto the desktop,
-; missing ones are started there.
+; Idempotent, like omarchy-context launch: apps already running are left alone.
 LaunchContext(n, *) {
-    GoToDesktop(n)
-    if !ChromeOnDesktop(n)
-        Browser(CONTEXT_CHROME[n])
-    for rule in RULES {
-        if rule.desktop != n || !rule.HasProp("run")
-            continue
-        windows := MatchingWindows(rule)
-        if windows.Length {
-            for hwnd in windows
-                MoveToDesktop(hwnd, n)
-        } else if InStr(rule.run, RDP_DIR) && !FileExist(rule.run) {
-            TrayTip "Missing " rule.run, "Cloud PC", 3
-        } else {
-            Run rule.run
-            ; An app coming back from the tray may reopen on the desktop it last used.
-            SetTimer RegroupRule.Bind(rule, n), -4000
-            Sleep 800 ; stagger, as omarchy-context does, so windows map in order
+    global currentContext
+    ctx := CONTEXTS[n]
+    Glaze("focus --workspace " ctx.rows[1])
+    if !(contextChrome.Has(n) && WinExist("ahk_id " contextChrome[n])) {
+        before := ChromeWindows()
+        Browser(ctx.chrome)
+        Loop 40 { ; a new window opens on the focused workspace, the browser row
+            Sleep 250
+            for hwnd in ChromeWindows()
+                if !before.Has(hwnd) {
+                    contextChrome[n] := hwnd
+                    break 2
+                }
         }
     }
-}
-
-RegroupRule(rule, n) {
-    for hwnd in MatchingWindows(rule)
-        if WindowDesktop(hwnd) != n
-            MoveToDesktop(hwnd, n)
+    for app in ctx.apps
+        if !WinExist("ahk_exe " app.exe) {
+            Run app.run
+            Sleep 800 ; stagger, as omarchy-context does, so windows map in order
+        }
+    rowIndex[n] := 1
+    Glaze("focus --workspace " n)
+    currentContext := n
 }
 
 QuitContext(*) {
-    n := CurrentDesktop()
-    if !CONTEXT_CHROME.Has(n)
+    n := currentContext
+    if !CONTEXTS.Has(n)
         return
-    for hwnd in WinGetList("ahk_exe chrome.exe ahk_class Chrome_WidgetWin_1")
-        if InStr(WinGetTitle(hwnd), " - Google Chrome") && WindowDesktop(hwnd) = n
-            WinClose hwnd
-    for rule in RULES
-        if rule.desktop = n && rule.HasProp("run")
-            for hwnd in MatchingWindows(rule)
-                WinClose hwnd
+    if contextChrome.Has(n) && WinExist("ahk_id " contextChrome[n])
+        WinClose "ahk_id " contextChrome[n]
+    for app in CONTEXTS[n].apps
+        for hwnd in WinGetList("ahk_exe " app.exe)
+            WinClose "ahk_id " hwnd
 }
 
-Loop 4
+Loop 4 {
+    Hotkey "#F" A_Index, SwitchContext.Bind(A_Index)
     Hotkey "#+F" A_Index, LaunchContext.Bind(A_Index)
+}
+#F5:: {
+    if currentContext
+        SwitchContext(currentContext)
+}
 #+q:: QuitContext()
+
+; Omarchy's scratchpad toggle (Super+S / Super+`). GlazeWM's own refocus toggle is off
+; because it would also bounce the context keys, so the toggle state lives here.
+scratchShown := false
+ToggleScratchpad(*) {
+    global scratchShown
+    Glaze(scratchShown ? "focus --recent-workspace" : "focus --workspace S")
+    scratchShown := !scratchShown
+}
+#s:: ToggleScratchpad()
+#SC029:: ToggleScratchpad() ; the ` key

@@ -18,12 +18,13 @@ general:
   hide_method: 'cloak'
   show_all_in_taskbar: false
 
-# No gaps (Omarchy's gaps_in/gaps_out = 0 look); the top only leaves room for the 30px bar.
+# No gaps (Omarchy's gaps_in/gaps_out = 0 look). The bar needs no gap either: Zebar docks
+# to the top edge (dockToEdge), which already takes its 30px out of the work area.
 gaps:
   scale_with_dpi: true
   inner_gap: '0px'
   outer_gap:
-    top: '30px'
+    top: '0px'
     right: '0px'
     bottom: '0px'
     left: '0px'

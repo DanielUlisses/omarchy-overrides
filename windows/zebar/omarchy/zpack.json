@@ -3,20 +3,29 @@
   "name": "omarchy",
   "version": "0.1.0",
   "description": "Omarchy-style top bar for GlazeWM, with Claude subscription usage from claude-acc.",
-  "tags": ["topbar"],
+  "tags": [
+    "topbar"
+  ],
   "previewImages": [],
   "repositoryUrl": "",
   "widgets": [
     {
-      "name": "bar",
-      "htmlPath": "./bar.html",
+      "name": "main",
+      "htmlPath": "./main.html",
       "zOrder": "normal",
       "shownInTaskbar": false,
       "focused": false,
       "resizable": false,
       "transparent": true,
-      "includeFiles": ["*.html", "*.css", "*.js"],
-      "caching": { "defaultDuration": 604800, "rules": [] },
+      "includeFiles": [
+        "*.html",
+        "*.css",
+        "*.js"
+      ],
+      "caching": {
+        "defaultDuration": 604800,
+        "rules": []
+      },
       "privileges": {
         "shellCommands": [
           {
@@ -33,8 +42,53 @@
           "offsetY": "0px",
           "width": "100%",
           "height": "30px",
-          "monitorSelection": { "type": "all" },
-          "dockToEdge": { "enabled": true, "edge": "top", "windowMargin": "0px" }
+          "monitorSelection": {
+            "type": "primary"
+          },
+          "dockToEdge": {
+            "enabled": true,
+            "edge": "top",
+            "windowMargin": "0px"
+          }
+        }
+      ]
+    },
+    {
+      "name": "bar",
+      "htmlPath": "./bar.html",
+      "zOrder": "normal",
+      "shownInTaskbar": false,
+      "focused": false,
+      "resizable": false,
+      "transparent": true,
+      "includeFiles": [
+        "*.html",
+        "*.css",
+        "*.js"
+      ],
+      "caching": {
+        "defaultDuration": 604800,
+        "rules": []
+      },
+      "privileges": {
+        "shellCommands": []
+      },
+      "presets": [
+        {
+          "name": "default",
+          "anchor": "top_left",
+          "offsetX": "0px",
+          "offsetY": "0px",
+          "width": "100%",
+          "height": "30px",
+          "monitorSelection": {
+            "type": "secondary"
+          },
+          "dockToEdge": {
+            "enabled": true,
+            "edge": "top",
+            "windowMargin": "0px"
+          }
         }
       ]
     }

@@ -52,3 +52,4 @@ i { margin-right: 5px; color: var(--cyan); }
 .claude .warn { color: var(--warn); }
 .claude .crit { color: var(--crit); }
 .claude .error { color: var(--crit); }
+.claude .stale { opacity: 0.5; }

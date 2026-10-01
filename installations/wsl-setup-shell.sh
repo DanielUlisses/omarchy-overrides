@@ -121,6 +121,12 @@ if command -v cmd.exe >/dev/null && cmd.exe /c ver >/dev/null 2>&1; then
   cp "$REPO_DIR/windows/glazewm/config.yaml" "$userprofile/.glzr/glazewm/"
   cp "$REPO_DIR/windows/zebar/settings.json" "$userprofile/.glzr/zebar/"
   cp "$REPO_DIR"/windows/zebar/omarchy/* "$userprofile/.glzr/zebar/omarchy/"
+  # The next-event widget reuses the Omarchy plugin's model (fork with our fixes).
+  curl -fsSL https://raw.githubusercontent.com/DanielUlisses/next-event/dev/Model.js \
+    -o "$userprofile/.glzr/zebar/omarchy/next-event-model.js"
+  mkdir -p "$HOME/.config/next-event"
+  [ -f "$HOME/.config/next-event/feeds" ] ||
+    printf '# label|chrome profile|private .ics url, one calendar per line (see bin/next-event-feeds)\n' >"$HOME/.config/next-event/feeds"
   echo "Installed GlazeWM and Zebar"
 
   # Omarchy app launchers and client-context keys (Win as Super) from windows/autohotkey.

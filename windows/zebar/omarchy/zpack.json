@@ -2,7 +2,7 @@
   "$schema": "https://github.com/glzr-io/zebar/raw/v3.0.0/resources/zpack-schema.json",
   "name": "omarchy",
   "version": "0.1.0",
-  "description": "Omarchy-style top bar for GlazeWM, with Claude subscription usage from claude-acc.",
+  "description": "Omarchy-style top bar for GlazeWM, with the next calendar event and Claude subscription usage from claude-acc.",
   "tags": [
     "topbar"
   ],
@@ -31,6 +31,10 @@
           {
             "program": "wsl",
             "argsRegex": "^-d Arch -e /home/daniel/\\.claude-switch/bin/claude-acc usage$"
+          },
+          {
+            "program": "wsl",
+            "argsRegex": "^-d Arch -e /home/daniel/\\.omarchy-overrides/bin/next-event-feeds (fetch|open (Default|Profile \\d+) https://\\S+)$"
           }
         ]
       },

@@ -1,0 +1,53 @@
+#!/bin/bash
+# Calendar backend for the Zebar next-event widget (windows/zebar/omarchy/next-event.js).
+# Zebar's webview cannot read .ics feeds itself (no CORS), so it runs this through WSL:
+#
+#   next-event-feeds fetch                 every feed, each preceded by a header line
+#   next-event-feeds open <profile> <url>  open a meeting/calendar link in that Chrome profile
+#
+# Feeds live in ~/.config/next-event/feeds, never in the repo: a private .ics address is a
+# credential. One feed per line, `label|chrome profile|url`, # for comments, e.g.
+#   pythian|Default|https://calendar.google.com/calendar/ical/.../basic.ics
+#   personal|Profile 3|https://calendar.google.com/calendar/ical/.../basic.ics
+# The profile is a Chrome profile directory (chrome://version), used to join that feed's meetings.
+#
+# fetch prints, per feed:  #NEXT-EVENT-FEED<TAB>label<TAB>profile<TAB>ok|failed
+# followed by the feed's ICS text when ok.
+
+set -uo pipefail
+
+trim() { local s=$1; s=${s#"${s%%[![:space:]]*}"}; printf %s "${s%"${s##*[![:space:]]}"}"; }
+
+FEEDS="${NEXT_EVENT_FEEDS:-$HOME/.config/next-event/feeds}"
+CHROME="/mnt/c/Program Files/Google/Chrome/Application/chrome.exe"
+
+case "${1:-}" in
+fetch)
+  [ -f "$FEEDS" ] || exit 0
+  while IFS="|" read -r label profile url || [ -n "$label" ]; do
+    label=$(trim "$label")
+    [ -z "$label" ] || [ "${label:0:1}" = "#" ] && continue
+    # Two fields = no profile.
+    [ -z "${url:-}" ] && url=$profile && profile=""
+    profile=$(trim "$profile")
+    url=$(trim "$url")
+    # The URL goes to curl on stdin, never argv, so it does not show up in process lists.
+    if body=$(printf 'url = "%s"\n' "$url" |
+      curl -fsSL --compressed --max-time 15 --max-filesize 10485760 -K -); then
+      printf '#NEXT-EVENT-FEED\t%s\t%s\tok\n%s\n' "$label" "$profile" "$body"
+    else
+      printf '#NEXT-EVENT-FEED\t%s\t%s\tfailed\n' "$label" "$profile"
+    fi
+  done <"$FEEDS"
+  ;;
+open)
+  profile=${2:?profile} url=${3:?url}
+  # Foreground: a backgrounded chrome.exe dies with the wsl.exe call before it starts.
+  # chrome.exe hands the URL to the running Chrome and returns straight away.
+  exec "$CHROME" --profile-directory="$profile" "$url" >/dev/null 2>&1
+  ;;
+*)
+  echo "usage: next-event-feeds fetch | open <chrome profile> <url>" >&2
+  exit 2
+  ;;
+esac

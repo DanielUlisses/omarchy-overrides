@@ -53,3 +53,8 @@ i { margin-right: 5px; color: var(--cyan); }
 .claude .crit { color: var(--crit); }
 .claude .error { color: var(--crit); }
 .claude .stale { opacity: 0.5; }
+
+.next-event { cursor: pointer; }
+.next-event.live { color: var(--accent); }
+.next-event.empty { color: var(--muted); }
+.next-event.stale, .next-event.updating { opacity: 0.5; }

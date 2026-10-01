@@ -8,7 +8,10 @@
     <div id="root">
       <div class="app">
         <div class="left"><div id="workspaces"></div></div>
-        <div class="center" id="date"></div>
+        <div class="center">
+          <span id="date"></span>
+          <span class="next-event" id="next-event" hidden></span>
+        </div>
         <div class="right">
           <div class="claude" id="claude" title="Claude Code usage" hidden></div>
           <div id="cpu"></div>
@@ -19,5 +22,7 @@
     </div>
     <script>window.SHOW_CLAUDE = true;</script>
     <script type="module" src="./bar.js"></script>
+    <script src="./next-event-model.js"></script>
+    <script type="module" src="./next-event.js"></script>
   </body>
 </html>

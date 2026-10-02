@@ -198,6 +198,19 @@ if command -v cmd.exe >/dev/null && cmd.exe /c ver >/dev/null 2>&1; then
       & "$env:ProgramFiles\glzr.io\GlazeWM\cli\glazewm.exe" command wm-reload-config
     }' >/dev/null)
   echo "Installed AutoHotkey Omarchy keybindings"
+
+  # One Start Menu shortcut per Chrome profile, so Command Palette (Win+Space) lists each.
+  # Profile directories as in omarchy.ahk.
+  (cd /mnt/c && powershell.exe -NoProfile -Command '
+    $chrome = "$env:ProgramFiles\Google\Chrome\Application\chrome.exe"
+    $menu = [Environment]::GetFolderPath("Programs")
+    $profiles = [ordered]@{ Pythian = "Default"; Lanvera = "Profile 7"; BSS = "Profile 8"; Personal = "Profile 3" }
+    foreach ($name in $profiles.Keys) {
+      $s = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $menu "Chrome $name.lnk"))
+      $s.TargetPath = $chrome; $s.Arguments = "--profile-directory=`"$($profiles[$name])`""
+      $s.IconLocation = "$chrome,0"; $s.Description = "Google Chrome ($name)"; $s.Save()
+    }' >/dev/null)
+  echo "Installed Chrome profile shortcuts"
 else
   echo "NOTE: Windows interop unavailable, skipped Alacritty config + font" >&2
 fi

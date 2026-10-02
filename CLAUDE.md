@@ -76,7 +76,7 @@ The Windows taskbar is fully hidden (auto-hide + AutoHotkey hiding its windows, 
 toggles); Zebar's main bar carries the tray behind a chevron, weather, Claude usage
 (`claude-acc usage` through WSL, rate-limited, polled every 10 minutes), the next calendar
 event, and a Windows button that opens PowerToys Command Palette (`x-cmdpal:`, same as
-Win+Space).
+Win+Space). Win+Esc is Omarchy's system menu (lock, sleep, restart, shut down, sign out).
 
 Win+Alt+C is a quake-style drop-down running `claude --agent machine` in this repo:
 an Alacritty window titled `machine-agent` (GlazeWM ignores it), always on top across the

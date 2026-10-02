@@ -208,6 +208,20 @@ ShowDropDown(win) {
 ; copying the whole desktop.
 PrintScreen:: Run "ms-screenclip:"
 
+; Omarchy's system menu (Super+Escape), centred on the primary monitor. The underlined
+; letter picks an entry; Escape closes it.
+SystemMenu := Menu()
+SystemMenu.Add("&Lock", (*) => DllCall("LockWorkStation"))
+SystemMenu.Add("&Sleep", (*) => DllCall("PowrProf\SetSuspendState", "Int", 0, "Int", 0, "Int", 0))
+SystemMenu.Add("&Restart", (*) => Run("shutdown.exe /r /t 0", , "Hide"))
+SystemMenu.Add("Shut &down", (*) => Run("shutdown.exe /s /t 0", , "Hide"))
+SystemMenu.Add("Sign &out", (*) => Run("shutdown.exe /l", , "Hide"))
+#Escape:: {
+    CoordMode "Menu", "Screen"
+    MonitorGet MonitorGetPrimary(), &left, &top, &right, &bottom
+    SystemMenu.Show((left + right) // 2 - 60, (top + bottom) // 2 - 60)
+}
+
 ; Cloud PCs, from the .rdp/.rdpw files in %APPDATA%\omarchy\rdp (never in this public repo).
 ; Opened as they are, the files win over the Windows App's own display settings and span
 ; every monitor full screen (use multimon:i:1, or screen mode id's full-screen default).

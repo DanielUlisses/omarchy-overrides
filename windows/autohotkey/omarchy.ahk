@@ -232,9 +232,11 @@ CONTEXTS := Map(
         {win: "ahk_exe slack.exe", run: '"' LOCALAPPDATA '\slack\slack.exe"'},
         {win: "Cloud PC Enterprise", run: OpenRdp.Bind("f5.rdpw")}]},
     2, {chrome: LANVERA, rows: [22, 32, 42], apps: [
-        {win: "ahk_exe ms-teams.exe", run: StoreApp("MSTeams_8wekyb3d8bbwe!MSTeams")},
+        {win: "@Lanvera.org | Microsoft Teams ahk_exe ms-teams.exe", run: StoreApp("MSTeams_8wekyb3d8bbwe!MSTeams")},
         {win: "SessionDesktop", run: OpenRdp.Bind("lanvera.rdpw")}]},
-    3, {chrome: BSS, rows: [23, 43], apps: [
+    ; BSS is Teams' Personal-account window, which GlazeWM puts on 33.
+    3, {chrome: BSS, rows: [23, 33, 43], apps: [
+        {win: "| Personal | ahk_exe ms-teams.exe", run: StoreApp("MSTeams_8wekyb3d8bbwe!MSTeams")},
         {win: "Shared BSS", run: OpenRdp.Bind("sharedBss.rdpw")}]},
     4, {chrome: PERSONAL, rows: [24, 34, 44], apps: []},
 )

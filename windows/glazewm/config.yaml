@@ -103,9 +103,18 @@ window_rules:
   - commands: ['move --workspace 31']
     match:
       - window_process: { equals: 'slack' }
+  # Teams has one window per account and its title names the account: Lanvera's work
+  # account stays on 32, the BSS one (signed in as a Personal account) goes to 33. A new
+  # window is titled just "Microsoft Teams" until it loads, so the 33 rule also runs on
+  # title changes.
   - commands: ['move --workspace 32']
     match:
       - window_process: { equals: 'ms-teams' }
+  - commands: ['move --workspace 33']
+    on: ['manage', 'title_change']
+    match:
+      - window_process: { equals: 'ms-teams' }
+        window_title: { regex: '\| Personal \| [^|]+ \| Microsoft Teams$' }
   - commands: ['move --workspace 34']
     match:
       - window_process: { equals: 'Spark Desktop' }

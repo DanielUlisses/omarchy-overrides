@@ -30,6 +30,58 @@ if !ProcessExist("glazewm.exe") && FileExist(GLAZEWM_EXE)
 SetTimer KeepHookOnTop, 3000
 
 ; ---------------------------------------------------------------------------------------
+; Taskbar
+; ---------------------------------------------------------------------------------------
+
+; Fully hidden, as Omarchy has none: Zebar is the bar, tray icons included. Auto-hide
+; hands the taskbar's space to windows, and hiding its windows (one per monitor) removes
+; the strip auto-hide leaves at the screen edge. Explorer shows them again now and then
+; (its restarts, display changes), hence the timer. It leaves them alone while Start or
+; Search is open. Win+Alt+B brings the taskbar back until pressed again; leaving the
+; script brings it back too.
+taskbarHidden := true
+
+SetTaskbarAutoHide(on) {
+    abd := Buffer(A_PtrSize = 8 ? 48 : 36, 0) ; APPBARDATA
+    NumPut "UInt", abd.Size, abd, 0
+    NumPut "Ptr", WinExist("ahk_class Shell_TrayWnd"), abd, A_PtrSize
+    NumPut "Ptr", on ? 1 : 2, abd, abd.Size - A_PtrSize ; ABS_AUTOHIDE / ABS_ALWAYSONTOP
+    DllCall "Shell32\SHAppBarMessage", "UInt", 0xA, "Ptr", abd ; ABM_SETSTATE
+}
+
+TaskbarWindows() {
+    list := WinGetList("ahk_class Shell_TrayWnd")
+    for hwnd in WinGetList("ahk_class Shell_SecondaryTrayWnd")
+        list.Push(hwnd)
+    return list
+}
+
+HideTaskbar() {
+    if !taskbarHidden
+        || WinActive("ahk_exe StartMenuExperienceHost.exe")
+        || WinActive("ahk_exe SearchHost.exe")
+        return
+    for hwnd in TaskbarWindows() ; visible ones only (DetectHiddenWindows is off)
+        WinHide hwnd
+}
+
+ShowTaskbar() {
+    DetectHiddenWindows true
+    for hwnd in TaskbarWindows()
+        WinShow hwnd
+}
+
+#!b:: {
+    global taskbarHidden := !taskbarHidden
+    taskbarHidden ? HideTaskbar() : ShowTaskbar()
+}
+
+SetTaskbarAutoHide(true)
+HideTaskbar()
+SetTimer HideTaskbar, 2000
+OnExit (*) => (ShowTaskbar(), 0)
+
+; ---------------------------------------------------------------------------------------
 ; Launch helpers
 ; ---------------------------------------------------------------------------------------
 
@@ -67,11 +119,15 @@ FocusOrRun(winTitle, target) {
 StoreApp(appId) => "explorer.exe shell:AppsFolder\" appId
 
 ; A command inside WSL in a new Alacritty window, with the full interactive shell setup.
-Terminal(cmd := "") {
+; Alacritty on Windows hands its -e arguments to wsl.exe joined with spaces and without
+; re-quoting, so a plain "cmd" reached bash as separate words and only the first one ran.
+; The escaped quotes survive that hand-off. cmd must not contain double quotes itself.
+; opts are extra Alacritty options, placed before -e.
+Terminal(cmd := "", opts := "") {
     if cmd = ""
-        Run '"' ALACRITTY '"'
+        Run '"' ALACRITTY '" ' opts
     else
-        Run '"' ALACRITTY '" -e wsl.exe -d Arch --cd ~ -e bash -lic "' cmd '"'
+        Run '"' ALACRITTY '" ' opts ' -e wsl.exe -d Arch --cd ~ -e bash -lic "\"' cmd '\""'
 }
 
 Browser(profile, extra := "") => Run('"' CHROME '" --profile-directory="' profile '" ' extra)
@@ -86,6 +142,37 @@ WebApp(url, profile) => Browser(profile, "--app=" url)
 #^Enter:: Terminal("herdr")
 #+d:: Terminal("lazydocker")
 #+!a:: Terminal("claude")
+; The "machine" agent (.claude/agents/machine.md) for quick tweaks to this setup, as a
+; quake-style drop-down: Win+Alt+C opens it across the top of the primary monitor, always on
+; top, and from then on hides it (session kept running) or brings it back. Its fixed title
+; is what GlazeWM ignores (config.yaml) so it is never tiled.
+MACHINE_AGENT := "machine-agent ahk_exe alacritty.exe"
+
+#!c:: {
+    DetectHiddenWindows true
+    if !WinExist(MACHINE_AGENT) {
+        Terminal("cd ~/repos/daniel/omarchy-overrides && claude --agent machine",
+            "--title machine-agent -o window.dynamic_title=false")
+        if WinWait(MACHINE_AGENT, , 10)
+            ShowDropDown(MACHINE_AGENT)
+    } else if WinActive(MACHINE_AGENT) && DllCall("IsWindowVisible", "Ptr", WinExist(MACHINE_AGENT))
+        WinHide MACHINE_AGENT ; a hidden window can still count as the active one
+    else
+        ShowDropDown(MACHINE_AGENT)
+}
+
+ShowDropDown(win) {
+    MonitorGetWorkArea MonitorGetPrimary(), &left, &top, &right, &bottom
+    WinShow win
+    WinSetAlwaysOnTop true, win
+    WinMove left, top, right - left, Round((bottom - top) * 0.6), win
+    ; Windows sometimes refuses focus to a window that was just unhidden; ask again.
+    Loop 3 {
+        WinActivate win
+        if WinWaitActive(win, , 0.3)
+            break
+    }
+}
 
 #+b:: Browser(PERSONAL)
 #+!b:: Browser(PERSONAL, "--incognito")

@@ -35,6 +35,10 @@
           {
             "program": "wsl",
             "argsRegex": "^-d Arch -e /home/daniel/\\.omarchy-overrides/bin/next-event-feeds (fetch|open (Default|Profile \\d+) https://\\S+)$"
+          },
+          {
+            "program": "explorer",
+            "argsRegex": "^x-cmdpal:$"
           }
         ]
       },
@@ -75,7 +79,12 @@
         "rules": []
       },
       "privileges": {
-        "shellCommands": []
+        "shellCommands": [
+          {
+            "program": "explorer",
+            "argsRegex": "^x-cmdpal:$"
+          }
+        ]
       },
       "presets": [
         {

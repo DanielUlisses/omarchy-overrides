@@ -6,7 +6,7 @@
 //
 // Left click joins the next meeting (or opens it in Google Calendar), in the Chrome profile
 // set for its feed; right click refreshes. The tooltip is the agenda, in place of the panel.
-import * as zebar from 'https://esm.sh/zebar@3.0';
+import * as zebar from 'https://esm.sh/zebar@3.3';
 
 const SCRIPT = '/home/daniel/.omarchy-overrides/bin/next-event-feeds';
 const WSL = ['-d', 'Arch', '-e', SCRIPT];

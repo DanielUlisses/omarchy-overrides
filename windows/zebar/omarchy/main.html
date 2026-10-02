@@ -7,20 +7,26 @@
   <body>
     <div id="root">
       <div class="app">
-        <div class="left"><div id="workspaces"></div></div>
+        <div class="left">
+          <button class="launcher" id="launcher" title="Command Palette (Win+Space)"><i class="nf nf-fa-windows"></i></button>
+          <div id="workspaces"></div>
+        </div>
         <div class="center">
           <span id="date"></span>
           <span class="next-event" id="next-event" hidden></span>
         </div>
         <div class="right">
+          <button class="tray-toggle" id="tray-toggle" title="Tray icons" hidden><i class="nf nf-fa-chevron_left"></i></button>
+          <div class="tray" id="tray" hidden></div>
           <div class="claude" id="claude" title="Claude Code usage" hidden></div>
-          <div id="cpu"></div>
           <div id="memory"></div>
+          <div id="cpu"></div>
           <div id="battery"></div>
+          <div id="weather" hidden></div>
         </div>
       </div>
     </div>
-    <script>window.SHOW_CLAUDE = true;</script>
+    <script>window.SHOW_CLAUDE = true; window.SHOW_TRAY = true; window.SHOW_WEATHER = true;</script>
     <script type="module" src="./bar.js"></script>
     <script src="./next-event-model.js"></script>
     <script type="module" src="./next-event.js"></script>

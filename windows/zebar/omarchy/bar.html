@@ -7,12 +7,15 @@
   <body>
     <div id="root">
       <div class="app">
-        <div class="left"><div id="workspaces"></div></div>
-        <div class="center" id="date"></div>
+        <div class="left">
+          <button class="launcher" id="launcher" title="Command Palette (Win+Space)"><i class="nf nf-fa-windows"></i></button>
+          <div id="workspaces"></div>
+        </div>
+        <div class="center"><span id="date"></span></div>
         <div class="right">
           <div class="claude" id="claude" title="Claude Code usage" hidden></div>
-          <div id="cpu"></div>
           <div id="memory"></div>
+          <div id="cpu"></div>
           <div id="battery"></div>
         </div>
       </div>

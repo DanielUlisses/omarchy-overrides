@@ -21,7 +21,7 @@ body {
   user-select: none;
 }
 
-#root { background: var(--bg); }
+#root { background: var(--bg); border-bottom: 1px solid rgb(255 255 255 / 6%); box-sizing: border-box; }
 
 .app {
   display: grid;
@@ -31,7 +31,8 @@ body {
   padding: 0 10px;
 }
 
-.left, .center, .right { display: flex; align-items: center; gap: 14px; }
+.left, .center, .right { display: flex; align-items: center; gap: 18px; white-space: nowrap; }
+.left { gap: 10px; }
 .right { justify-self: end; }
 
 .workspace {
@@ -45,8 +46,25 @@ body {
 .workspace.displayed { color: var(--fg); }
 .workspace.focused { color: var(--accent); }
 
-i { margin-right: 5px; color: var(--cyan); }
+#date { color: var(--fg); }
 
+i { margin-right: 6px; color: var(--fg); }
+
+/* Plain icon buttons: the Windows (Command Palette) button and the tray chevron. */
+.launcher, .tray-toggle {
+  background: none;
+  border: none;
+  color: var(--fg);
+  font: inherit;
+  padding: 0 4px;
+  cursor: pointer;
+}
+.launcher i { margin: 0; font-size: 14px; }
+.launcher:hover i { color: var(--cyan); }
+.tray-toggle i { margin: 0; color: var(--muted); transition: transform 0.15s; }
+.tray-toggle.open i { transform: rotate(180deg); }
+
+.claude { cursor: pointer; }
 .claude .account { margin-left: 8px; }
 .claude .label { color: var(--muted); margin-right: 4px; }
 .claude .warn { color: var(--warn); }
@@ -58,3 +76,7 @@ i { margin-right: 5px; color: var(--cyan); }
 .next-event.live { color: var(--accent); }
 .next-event.empty { color: var(--muted); }
 .next-event.stale, .next-event.updating { opacity: 0.5; }
+
+.tray { display: flex; align-items: center; gap: 8px; }
+.tray[hidden] { display: none; }
+.tray-icon { width: 16px; height: 16px; cursor: pointer; }

@@ -1,0 +1,78 @@
+#!/bin/bash
+# Copy the Windows-side configs from windows/ to where the apps read them, and reload them.
+#
+#   wsl-deploy [ahk|glazewm|zebar|alacritty|all]...     (no argument = all)
+#
+# ahk        windows/autohotkey/omarchy.ahk -> %APPDATA%\autohotkey; validated first, a
+#            script with errors is not deployed. Restarted detached through PowerShell:
+#            anything started straight from WSL dies when the wsl.exe call exits.
+# glazewm    windows/glazewm/config.yaml -> %USERPROFILE%\.glzr\glazewm, then wm-reload-config.
+# zebar      windows/zebar -> %USERPROFILE%\.glzr\zebar, then Zebar restarts (its widget
+#            allow-listed commands in zpack.json are read at start). next-event-model.js is
+#            fetched by the setup script, not kept in the repo, so it is left in place.
+# alacritty  windows/alacritty/*.toml -> %APPDATA%\alacritty; Alacritty reloads by itself.
+
+set -euo pipefail
+
+REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+WIN="$REPO/windows"
+
+winenv() { wslpath "$(cd /mnt/c && cmd.exe /c "echo %$1%" 2>/dev/null | tr -d '\r')"; }
+APPDATA=$(winenv APPDATA)
+LOCALAPPDATA=$(winenv LOCALAPPDATA)
+USERPROFILE=$(winenv USERPROFILE)
+AHK="$LOCALAPPDATA/Programs/AutoHotkey/v2/AutoHotkey64.exe"
+GLAZEWM="/mnt/c/Program Files/glzr.io/GlazeWM/cli/glazewm.exe"
+
+ps() { (cd /mnt/c && powershell.exe -NoProfile -Command "$1" | tr -d '\r'); }
+
+deploy_ahk() {
+  local dest="$APPDATA/autohotkey/omarchy.ahk" tmp="$APPDATA/autohotkey/omarchy.check.ahk"
+  cp "$WIN/autohotkey/omarchy.ahk" "$tmp"
+  if ! (cd /mnt/c && "$AHK" /ErrorStdOut /validate "$(wslpath -w "$tmp")" 2>&1 | tr -d '\r'); then
+    rm -f "$tmp"
+    echo "ahk: validation failed, not deployed" >&2
+    return 1
+  fi
+  mv "$tmp" "$dest"
+  ps "Start-Process '$(wslpath -w "$AHK")' -ArgumentList '/restart','\"$(wslpath -w "$dest")\"'"
+  echo "ahk: deployed and restarted"
+}
+
+deploy_glazewm() {
+  cp "$WIN/glazewm/config.yaml" "$USERPROFILE/.glzr/glazewm/"
+  local out
+  out=$(cd /mnt/c && "$GLAZEWM" command wm-reload-config 2>&1 | tr -d '\r')
+  if [[ $out == *'"success":true'* ]]; then
+    echo "glazewm: deployed and reloaded"
+  else
+    echo "glazewm: reload failed: $out" >&2
+    tail -5 "$USERPROFILE/.glzr/glazewm/errors.log" 2>/dev/null | tr -d '\r' >&2
+    return 1
+  fi
+}
+
+deploy_zebar() {
+  mkdir -p "$USERPROFILE/.glzr/zebar/omarchy"
+  cp "$WIN/zebar/settings.json" "$USERPROFILE/.glzr/zebar/"
+  cp "$WIN"/zebar/omarchy/* "$USERPROFILE/.glzr/zebar/omarchy/"
+  ps 'Stop-Process -Name zebar -Force -ErrorAction SilentlyContinue; Start-Sleep 1; Start-Process "C:\Program Files\glzr.io\Zebar\zebar.exe"'
+  echo "zebar: deployed and restarted"
+}
+
+deploy_alacritty() {
+  cp "$WIN"/alacritty/*.toml "$APPDATA/alacritty/"
+  echo "alacritty: deployed (live reload)"
+}
+
+targets=("$@")
+[ ${#targets[@]} -eq 0 ] || [ "${targets[0]}" = all ] && targets=(ahk glazewm zebar alacritty)
+for t in "${targets[@]}"; do
+  case "$t" in
+  ahk | glazewm | zebar | alacritty) "deploy_$t" ;;
+  *)
+    echo "usage: wsl-deploy [ahk|glazewm|zebar|alacritty|all]..." >&2
+    exit 2
+    ;;
+  esac
+done

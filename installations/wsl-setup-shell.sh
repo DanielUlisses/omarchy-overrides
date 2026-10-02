@@ -106,6 +106,24 @@ if command -v cmd.exe >/dev/null && cmd.exe /c ver >/dev/null 2>&1; then
   mkdir -p "$HOME/.local/bin"
   ln -sf "$localappdata/Programs/win32yank/win32yank.exe" "$HOME/.local/bin/win32yank.exe"
 
+  # Alacritty with a current ConPTY: Windows' inbox one re-renders full-screen programs
+  # (herdr, Claude Code) and leaves stray characters behind. Alacritty loads conpty.dll
+  # (and its OpenConsole.exe) from its own directory, so a user-local copy carries them
+  # without touching Program Files; omarchy.ahk launches this copy when it exists.
+  alacritty_dir="$localappdata/Programs/Alacritty"
+  if [ -f "/mnt/c/Program Files/Alacritty/alacritty.exe" ]; then
+    mkdir -p "$alacritty_dir"
+    rm -f "$alacritty_dir/alacritty.exe" # the copy keeps Program Files' read-only bit
+    cp "/mnt/c/Program Files/Alacritty/alacritty.exe" "$alacritty_dir/"
+    tmp=$(mktemp -d)
+    v=$(curl -fsSL https://api.nuget.org/v3-flatcontainer/microsoft.windows.console.conpty/index.json |
+      jq -r '.versions | map(select(test("-") | not)) | last')
+    curl -fsSL "https://api.nuget.org/v3-flatcontainer/microsoft.windows.console.conpty/$v/microsoft.windows.console.conpty.$v.nupkg" -o "$tmp/conpty.zip"
+    unzip -o -q -j "$tmp/conpty.zip" runtimes/win-x64/native/conpty.dll build/native/runtimes/x64/OpenConsole.exe -d "$alacritty_dir"
+    rm -rf "$tmp"
+    echo "Alacritty uses ConPTY $v"
+  fi
+
   mkdir -p "$appdata/alacritty"
   cp "$REPO_DIR"/windows/alacritty/*.toml "$appdata/alacritty/"
 

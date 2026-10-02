@@ -34,7 +34,12 @@ SetTimer KeepHookOnTop, 3000
 ; ---------------------------------------------------------------------------------------
 
 LOCALAPPDATA := EnvGet("LOCALAPPDATA")
-ALACRITTY := A_ProgramFiles "\Alacritty\alacritty.exe"
+; The user-local copy bundles a current ConPTY (conpty.dll + OpenConsole.exe, see
+; wsl-setup-shell.sh). Windows' built-in one re-renders full-screen programs and leaves
+; stray characters behind in herdr and Claude Code.
+ALACRITTY := FileExist(LOCALAPPDATA "\Programs\Alacritty\conpty.dll")
+    ? LOCALAPPDATA "\Programs\Alacritty\alacritty.exe"
+    : A_ProgramFiles "\Alacritty\alacritty.exe"
 CHROME := A_ProgramFiles "\Google\Chrome\Application\chrome.exe"
 
 ; Chrome profile directories on this machine (Local State), not the Linux ones:
@@ -111,6 +116,10 @@ WebApp(url, profile) => Browser(profile, "--app=" url)
 #c:: Send "^{Insert}"
 #v:: Send "+{Insert}"
 #^v:: Send "#v"
+
+; Print Screen selects a region, like Omarchy: Snipping Tool's capture overlay instead of
+; copying the whole desktop.
+PrintScreen:: Run "ms-screenclip:"
 
 ; Cloud PCs, from the .rdp/.rdpw files in %APPDATA%\omarchy\rdp (never in this public repo).
 ; Opened as they are, the files win over the Windows App's own display settings and span

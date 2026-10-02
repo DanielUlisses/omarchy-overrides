@@ -303,7 +303,7 @@ FocusMonitor(step) {
 ;   Win+F1..F4        switch to that client; pressing it again walks its portrait rows
 ;   Win+F5            walk the current client's portrait rows
 ;   Win+Shift+F1..F4  launch that client's apps onto its workspaces, then switch there
-;   Win+Shift+Q       close the current client's apps
+;   Win+Shift+Q       close every window on the current client's portrait rows
 ; Slack, Teams, Spark, WhatsApp, Claude and the cloud PCs are placed by GlazeWM's rules; Chrome
 ; shares one process across profiles, so its windows are placed here, by opening them
 ; on the browser row.
@@ -390,15 +390,34 @@ LaunchContext(n, *) {
     currentContext := n
 }
 
+; Closes everything on the client's portrait rows, through GlazeWM: a WinClose sent to a
+; window on a hidden (cloaked) workspace did not close it. Its apps that wandered off the
+; rows are closed by WinTitle afterwards.
 QuitContext(*) {
     n := currentContext
     if !CONTEXTS.Has(n)
         return
-    if contextChrome.Has(n) && WinExist("ahk_id " contextChrome[n])
-        WinClose "ahk_id " contextChrome[n]
+    tmp := A_Temp "\omarchy-workspaces.json"
+    RunWait(A_ComSpec ' /c ""' GLAZEWM '" query workspaces > "' tmp '""', , "Hide")
+    json := FileRead(tmp)
+    FileDelete tmp
+    for chunk in StrSplit(json, '{"type":"workspace",') {
+        if !RegExMatch(chunk, '^"id":"[^"]+","name":"(\d+)"', &ws)
+            continue
+        for row in CONTEXTS[n].rows
+            if ws[1] = row {
+                pos := 1
+                while pos := RegExMatch(chunk, '"type":"window","id":"([^"]+)"', &win, pos) {
+                    Glaze("--id " win[1] " close")
+                    pos += win.Len
+                }
+            }
+    }
     for app in CONTEXTS[n].apps
         for hwnd in WinGetList(app.win)
             WinClose "ahk_id " hwnd
+    if contextChrome.Has(n)
+        contextChrome.Delete(n)
 }
 
 Loop 4 {

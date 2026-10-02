@@ -48,7 +48,7 @@ fi
 
 # mise, as install/user/mise.sh does it, minus the AI CLIs.
 mise settings set upgrade.auto_prune false
-mise use -g node@latest gh@latest
+mise use -g node@latest gh@latest terraform@latest
 mkdir -p "$HOME/Work/tries"
 
 # claude-acc (Claude Code account switcher); bash/.bashrc already carries its init line.
@@ -122,6 +122,25 @@ if command -v cmd.exe >/dev/null && cmd.exe /c ver >/dev/null 2>&1; then
     unzip -o -q -j "$tmp/conpty.zip" runtimes/win-x64/native/conpty.dll build/native/runtimes/x64/OpenConsole.exe -d "$alacritty_dir"
     rm -rf "$tmp"
     echo "Alacritty uses ConPTY $v"
+  fi
+
+  # VS Code: the Omarchy theme's own extension. Themes load in the Windows client, not the
+  # WSL server, so it goes into Windows VS Code; only the colorTheme line of the user's
+  # settings is touched (the file has comments, so no JSON rewrite).
+  vsix=$(ls "$THEME_DIR"/vscode-extension/*.vsix 2>/dev/null | head -1)
+  vscode_settings="$appdata/Code/User/settings.json"
+  if [ -n "$vsix" ] && [ -f "$localappdata/Programs/Microsoft VS Code/bin/code.cmd" ]; then
+    cp "$vsix" "$localappdata/Temp/omarchy-theme.vsix"
+    (cd /mnt/c && powershell.exe -NoProfile -Command '& "$env:LOCALAPPDATA\Programs\Microsoft VS Code\bin\code.cmd" --install-extension "$env:TEMP\omarchy-theme.vsix" --force' >/dev/null 2>&1)
+    rm -f "$localappdata/Temp/omarchy-theme.vsix"
+    theme=$(jq -r .name "$THEME_DIR/vscode.json")
+    if [ -f "$vscode_settings" ] && grep -q '"workbench.colorTheme"' "$vscode_settings"; then
+      sed -i "s/^\(\s*\"workbench.colorTheme\": \)\"[^\"]*\"/\1\"$theme\"/" "$vscode_settings"
+    elif [ ! -f "$vscode_settings" ]; then
+      mkdir -p "$(dirname "$vscode_settings")"
+      printf '{\n  "workbench.colorTheme": "%s"\n}\n' "$theme" >"$vscode_settings"
+    fi
+    echo "VS Code theme: $theme"
   fi
 
   mkdir -p "$appdata/alacritty"

@@ -318,6 +318,16 @@ Loop 4 {
     Hotkey "#F" A_Index, SwitchContext.Bind(A_Index)
     Hotkey "#+F" A_Index, LaunchContext.Bind(A_Index)
 }
+
+; Step through the contexts in order, wrapping 4 -> 1, like pressing the next/previous
+; Win+F<n>. Meant for mouse buttons (Logi Options+ keystrokes): down = next, as Omarchy's
+; Super+scroll-down goes to the next workspace.
+StepContext(delta, *) {
+    n := CONTEXTS.Count
+    SwitchContext(currentContext ? Mod(currentContext - 1 + delta + n, n) + 1 : 1)
+}
+#PgDn:: StepContext(1)
+#PgUp:: StepContext(-1)
 #F5:: {
     if currentContext
         SwitchContext(currentContext)

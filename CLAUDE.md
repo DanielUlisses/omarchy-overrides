@@ -86,6 +86,8 @@ Alacritty is launched from `%LOCALAPPDATA%\Programs\Alacritty`, a copy next to M
 current `conpty.dll` + `OpenConsole.exe`: the inbox ConPTY garbles herdr and Claude Code.
 Alacritty swallows unclaimed Win combos, which herdr would otherwise print as `2;9u`.
 
+Win+Ctrl+S is the same drop-down (title `secretary`) for the daily assistant: PowerShell
+running `start.cmd` in the Windows-side `%USERPROFILE%\repos\secretary`.
 ## Pitfalls
 
 - A Windows program started from WSL in the background (`&`) dies when the `wsl.exe` call

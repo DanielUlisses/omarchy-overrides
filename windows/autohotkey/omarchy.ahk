@@ -148,17 +148,33 @@ WebApp(url, profile) => Browser(profile, "--app=" url)
 ; is what GlazeWM ignores (config.yaml) so it is never tiled.
 MACHINE_AGENT := "machine-agent ahk_exe alacritty.exe"
 
-#!c:: {
+#!c:: ToggleDropDown(MACHINE_AGENT,
+    () => Terminal("cd ~/repos/daniel/omarchy-overrides && claude --agent machine",
+        "--title machine-agent -o window.dynamic_title=false"))
+
+; The daily assistant (Windows-side repo ~/repos/secretary, started by its start.cmd in
+; PowerShell), the same drop-down on Win+Ctrl+S (Win+S is the scratchpad).
+SECRETARY := "secretary ahk_exe alacritty.exe"
+; AutoHotkey keeps the PATH it got at sign-in, so tools installed since (op, claude, git)
+; are missing in what it starts; reread PATH from the registry first.
+SECRETARY_CMD := "$env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine')"
+    . " + ';' + [Environment]::GetEnvironmentVariable('Path', 'User'); .\start.cmd"
+#^s:: ToggleDropDown(SECRETARY,
+    () => Run('"' ALACRITTY '" --title secretary -o window.dynamic_title=false'
+        . ' --working-directory "' EnvGet("USERPROFILE") '\repos\secretary"'
+        . ' -e powershell.exe -NoLogo -NoExit -Command ' SECRETARY_CMD))
+
+; First press launches it, then the key hides it (session kept) or brings it back.
+ToggleDropDown(win, launch) {
     DetectHiddenWindows true
-    if !WinExist(MACHINE_AGENT) {
-        Terminal("cd ~/repos/daniel/omarchy-overrides && claude --agent machine",
-            "--title machine-agent -o window.dynamic_title=false")
-        if WinWait(MACHINE_AGENT, , 10)
-            ShowDropDown(MACHINE_AGENT)
-    } else if WinActive(MACHINE_AGENT) && DllCall("IsWindowVisible", "Ptr", WinExist(MACHINE_AGENT))
-        WinHide MACHINE_AGENT ; a hidden window can still count as the active one
+    if !WinExist(win) {
+        launch()
+        if WinWait(win, , 10)
+            ShowDropDown(win)
+    } else if WinActive(win) && DllCall("IsWindowVisible", "Ptr", WinExist(win))
+        WinHide win ; a hidden window can still count as the active one
     else
-        ShowDropDown(MACHINE_AGENT)
+        ShowDropDown(win)
 }
 
 ShowDropDown(win) {

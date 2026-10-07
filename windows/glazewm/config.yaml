@@ -152,9 +152,9 @@ window_rules:
       - window_process: { equals: 'zebar' }
       # Print Screen's capture overlay (one per monitor): managing it closes it at once.
       - window_process: { equals: 'SnippingTool' }
-      # The machine agent's drop-down terminal (Win+Alt+C in omarchy.ahk), never tiled.
+      # The drop-down terminals (machine agent Win+Alt+C, secretary Win+Ctrl+S), never tiled.
       - window_process: { equals: 'alacritty' }
-        window_title: { equals: 'machine-agent' }
+        window_title: { regex: '^(machine-agent|secretary)$' }
       - window_title: { regex: '[Pp]icture.in.[Pp]icture' }
         window_class: { regex: 'Chrome_WidgetWin_1|MozillaDialogClass' }
       - window_process: { equals: 'PowerToys' }

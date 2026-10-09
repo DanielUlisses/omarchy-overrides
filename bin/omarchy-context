@@ -15,7 +15,7 @@
 #              ctx 1 Pythian   ctx 2 Lanvera   ctx 3 BSS        ctx 4 Personal
 #   2n browser 21 chrome       22 chrome       23 chrome        24 chrome
 #   3n chat    31 slack        32 teams        33 teams (BSS)   34 chrome (admin)
-#   4n cloudpc 41 freerdp      42 freerdp      43 freerdp       44 remmina
+#   4n cloudpc 41 freerdp      42 freerdp      43 freerdp       -
 #
 # Cloud PCs are named after the sub-client, not the context: ctx 1 is the Pythian
 # engagement but its cloud PC is "f5", because Pythian will bring more of them.
@@ -27,8 +27,22 @@
 # Chrome windows -- see is_chrome() below for why those have to be placed here.
 set -u
 
-DEV=DP-6
-COMMS=DP-5
+# Connector names are not stable across machines: the same two Samsungs come up as
+# DP-6 (main) / DP-5 (portrait) on one laptop and the other way round on hpc001.
+# hyprmoncfg pins workspaces by monitor *description*, so ask it where 1 and 21 live
+# and fall back to the original names only when there is no rule.
+mon_for_ws() {
+  local target
+  target=$(hyprctl workspacerules -j 2>/dev/null | jq -r --arg w "$1" 'first(.[]|select(.workspaceString==$w)|.monitor // empty)')
+  case "$target" in
+  desc:*) hyprctl monitors -j | jq -r --arg d "${target#desc:}" 'first(.[]|select(.description==$d)|.name)' ;;
+  *) echo "$target" ;;
+  esac
+}
+DEV=$(mon_for_ws 1)
+COMMS=$(mon_for_ws 21)
+DEV=${DEV:-DP-6}
+COMMS=${COMMS:-DP-5}
 
 CHROME='uwsm app -- google-chrome-stable'
 CLOUDPC='/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-cloudpc'
@@ -58,7 +72,6 @@ EOF
   4) cat <<EOF
 chrome-personal	24	$CHROME --profile-directory="Default" --class=chrome-personal
 chrome-admin	34	$CHROME --profile-directory="Profile 4" --class=chrome-admin
-org.remmina.Remmina	44	uwsm app -- remmina -c "/home/daniel/.local/share/remmina/group_rdp_pythian_172-16-0-16.remmina"
 EOF
     ;;
   esac
@@ -210,6 +223,7 @@ notes)
     [ "$(rows $n | wc -l)" = "$(rows $n | sort -u | wc -l)" ] || { echo "FAIL: context $n reuses a workspace"; exit 1; }
     [ "$(rows $n | cut -c2 | sort -u)" = "$n" ] || { echo "FAIL: context $n has a row on the wrong context digit"; exit 1; }
   done
+  COMMS=DP-5
   hyprctl() { echo '[{"name":"DP-5","activeWorkspace":{"name":"'"$FAKE_WS"'"}}]'; }
   FAKE_WS=1 && [ "$(next_row 2)" = 22 ] || { echo "FAIL: cold switch should start at the browser row"; exit 1; }
   FAKE_WS=22 && [ "$(next_row 2)" = 32 ] || { echo "FAIL: browser row should advance to chat"; exit 1; }
@@ -217,8 +231,7 @@ notes)
   FAKE_WS=42 && [ "$(next_row 2)" = 22 ] || { echo "FAIL: last row should wrap to the browser row"; exit 1; }
   FAKE_WS=21 && [ "$(next_row 2)" = 22 ] || { echo "FAIL: another context's row should not be a cycle position"; exit 1; }
   FAKE_WS=24 && [ "$(next_row 4)" = 34 ] || { echo "FAIL: Personal should advance to its admin browser"; exit 1; }
-  FAKE_WS=34 && [ "$(next_row 4)" = 44 ] || { echo "FAIL: Personal admin browser should advance to its Remmina row"; exit 1; }
-  FAKE_WS=44 && [ "$(next_row 4)" = 24 ] || { echo "FAIL: Personal cloud PC row should wrap to the browser row"; exit 1; }
+  FAKE_WS=34 && [ "$(next_row 4)" = 24 ] || { echo "FAIL: Personal admin browser should wrap to the browser row"; exit 1; }
   FAKE_WS=33 && [ "$(next_row 3)" = 43 ] || { echo "FAIL: chat row should advance to the BSS cloud PC"; exit 1; }
   [ "$(chrome_wanted 4 24)" = 1 ] || { echo "FAIL: Personal should want 1 Chrome window on 24"; exit 1; }
   [ "$(chrome_wanted 3 43)" = 0 ] || { echo "FAIL: the BSS cloud PC is native FreeRDP now, not a Chrome window"; exit 1; }

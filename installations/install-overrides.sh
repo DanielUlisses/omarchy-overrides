@@ -22,6 +22,13 @@ if [ -f "$HYPRLAND_LUA" ]; then
     SOURCE_LINE="dofile(\"$OVERRIDES_LUA\")"
     if grep -Fxq "$SOURCE_LINE" "$HYPRLAND_LUA"; then
         echo "Overrides already sourced in hyprland.lua"
+    elif grep -Eq '^dofile\(".*/overrides/omarchy-overrides\.lua"\)$' "$HYPRLAND_LUA"; then
+        # Sourced from an older clone (e.g. a ~/.omarchy-overrides.bak.* left by
+        # link-overrides-repo.sh): repoint it rather than loading two copies.
+        sed -E "s|^dofile\\(\".*/overrides/omarchy-overrides\\.lua\"\\)\$|$SOURCE_LINE|" "$HYPRLAND_LUA" > "$HYPRLAND_LUA.tmp"
+        cat "$HYPRLAND_LUA.tmp" > "$HYPRLAND_LUA"
+        rm "$HYPRLAND_LUA.tmp"
+        echo "Overrides repointed to $OVERRIDES_LUA in hyprland.lua"
     elif grep -Fq -e "$HYPRMONCFG_MARKER" "$HYPRLAND_LUA"; then
         awk -v line="$SOURCE_LINE" -v marker="$HYPRMONCFG_MARKER" '
             !done && index($0, marker) == 1 { print line; print ""; done = 1 }

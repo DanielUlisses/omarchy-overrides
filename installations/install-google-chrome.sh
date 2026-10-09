@@ -1,4 +1,4 @@
 #!/bin/sh
 
 echo "Installing Google Chrome..."
-yay -S --noconfirm google-chrome
+yay -S --noconfirm --needed google-chrome

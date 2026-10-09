@@ -4,7 +4,7 @@
 
 echo "Installing VSCode..."
 sudo rm -rf "$HOME/.cache/yay/visual-studio-code-bin"
-yay -S --noconfirm visual-studio-code-bin
+yay -S --noconfirm --needed visual-studio-code-bin
 
 mkdir -p ~/.vscode ~/.config/Code/User
 
@@ -32,4 +32,6 @@ omarchy default editor code
 # Apply Omarchy theme to VSCode
 omarchy-theme-set-vscode
 
-setsid gtk-launch code
+# The package's desktop entry is com.microsoft.VSCode.desktop now, not code.desktop, and
+# `gtk-launch code` failing as the last line used to abort master-installation.sh here.
+setsid gtk-launch com.microsoft.VSCode >/dev/null 2>&1 || true

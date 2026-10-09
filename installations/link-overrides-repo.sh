@@ -9,6 +9,14 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET="$HOME/.omarchy-overrides"
 
+# Cloned straight into ~/.omarchy-overrides: nothing to link. Without this the branch
+# below moves the repo out from under itself -- which is how hpc001 ended up running
+# everything from ~/.omarchy-overrides.bak.<stamp>.
+if [ ! -L "$TARGET" ] && [ "$(readlink -f "$TARGET")" = "$REPO_DIR" ]; then
+  echo "Repo is already at $TARGET"
+  exit 0
+fi
+
 if [ -L "$TARGET" ]; then
   if [ "$(readlink -f "$TARGET")" = "$REPO_DIR" ]; then
     echo "$TARGET already points to $REPO_DIR"

@@ -14,6 +14,7 @@ bash ./installations/install-google-chrome.sh
 bash ./installations/install-vscode.sh
 bash ./installations/install-herdr.sh
 bash ./installations/install-apps.sh
+bash ./installations/setup-cloudpc.sh
 
 bash ./installations/install-overrides.sh
 bash ./installations/install-theme.sh

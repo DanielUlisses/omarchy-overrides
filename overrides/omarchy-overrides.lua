@@ -25,14 +25,11 @@ hl.env("__GLX_VENDOR_LIBRARY_NAME", "mesa")
 --              ctx 1 Pythian   ctx 2 Lanvera   ctx 3 BSS        ctx 4 Personal
 --   2n browser 21 chrome       22 chrome       23 chrome        24 chrome
 --   3n chat    31 slack        32 teams        33 teams (BSS)   34 chrome (admin)
---   4n cloudpc 41 freerdp      42 freerdp      43 freerdp       44 remmina
+--   4n cloudpc 41 freerdp      42 freerdp      43 freerdp       -
 --
 -- The whole 4n row is native FreeRDP now, via bin/omarchy-cloudpc: 41 is the F5 Windows
 -- 365 Cloud PC, 42 Lanvera, 43 BSS. Cloud PCs are named for the sub-client rather than
 -- the context -- 41 sits in ctx 1 (Pythian) but is F5's, because Pythian will bring more.
--- 44 holds the 172.16.10.156 box on Remmina, moved off Pythian because it is becoming
--- personal. NOTE: hyprmoncfg has no rule for 44 yet (it generates 21-24, 31-34, 41-43),
--- so 44 opens on whichever monitor has focus until one is added to its profile.
 --
 -- Workspaces 5..9 are deliberately unruled and open on the focused monitor.
 --
@@ -110,8 +107,6 @@ hl.window_rule({
 
 -- Application keybindings (overrides omarchy defaults)
 local cloudpc = "/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-cloudpc"
--- The 172.16.10.156 box is the only thing left on Remmina and is becoming personal.
-local remmina_box = 'uwsm app -- remmina -c "/home/daniel/.local/share/remmina/group_rdp_pythian_172-16-10-156.remmina"'
 
 hl.unbind("SUPER + SHIFT + SLASH")
 hl.unbind("SUPER + SHIFT + A")
@@ -136,7 +131,6 @@ o.bind("SUPER + SHIFT + Y", "YouTube", 'omarchy-launch-webapp "https://youtube.c
 -- logins (gateway token, then per-host token); FreeRDP does not cache them.
 o.bind("SUPER + SHIFT + R", "F5 Cloud PC", cloudpc .. " f5")
 o.bind("SUPER + SHIFT + ALT + R", "BSS Cloud PC", cloudpc .. " bss")
-o.bind("SUPER + SHIFT + CTRL + R", "Remote desktop 172.16.10.156", remmina_box)
 o.bind("SUPER + SHIFT + M", "Meet", 'omarchy-launch-webapp "https://meet.google.com/" --profile-directory="Profile 1"')
 o.bind("SUPER + SHIFT + T", "Teams", "uwsm app -- teams-for-linux")
 o.bind(
@@ -218,14 +212,6 @@ o.window("^(freerdp-webview-aad-helper)$", {
 	center = true,
 	size = { 900, 760 },
 })
-
--- Remmina now only holds the 172.16.10.156 box, which is moving to personal use, so it
--- sits on the Personal column rather than Pythian's. This catches the connection
--- manager as well as the session.
-place("org.remmina.Remmina", 44)
--- Tiled, not floated -- it has the workspace to itself, so the old centred 1600x900
--- float just wasted a portrait panel.
-o.window("^(org.remmina.Remmina)$", { float = false })
 
 o.window("^(omawrite)$", {
 	workspace = "special:notes silent",

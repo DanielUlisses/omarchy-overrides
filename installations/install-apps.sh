@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 
-# Remmina (the 172.16.10.156 box), Solaar (Logitech devices) and Claude Desktop.
+# FreeRDP (the cloud PCs), Solaar (Logitech devices) and Claude Desktop.
 
 set -euo pipefail
 
-# The -git builds match what bin/omarchy-context was tuned against. `pacman -Q` also
-# matches providers, so a machine that already has the repo remmina/freerdp keeps them
-# instead of hitting a package conflict under --noconfirm.
+# The -git build matches what bin/omarchy-cloudpc was tuned against. `pacman -Q` also
+# matches providers, so a machine that already has freerdp-git skips this.
 #
 # freerdp-git builds clean again as of 2026-09-22 (verified at 3.31.1.r383.g1e8b630), so
 # the old "fails to build" note is stale. It is kept enabled because it is the only
@@ -31,19 +30,12 @@ set -euo pipefail
 # The .rdp files stay in ~/.local/share/avd/ -- they carry tenant ids and a signature.
 #
 # Installing it replaces the repo freerdp, which pacman flags as a conflict. Answer yes:
-# freerdp-git declares provides=(freerdp=...), so remmina-git stays satisfied -- the
-# Pythian Remmina session was verified still working after the swap.
-echo "Installing Remmina..."
+# freerdp-git declares provides=(freerdp=...).
+echo "Installing FreeRDP..."
 pacman -Q freerdp >/dev/null 2>&1 || yay -S --noconfirm freerdp-git
-pacman -Q remmina >/dev/null 2>&1 || yay -S --noconfirm remmina-git
 
 echo "Installing Solaar..."
 yay -S --noconfirm --needed solaar
 
 echo "Installing Claude Desktop..."
 yay -S --noconfirm --needed claude-desktop
-
-if [ ! -f "$HOME/.local/share/remmina/group_rdp_pythian_172-16-10-156.remmina" ]; then
-  echo "NOTE: the Remmina profile is missing; SUPER+SHIFT+CTRL+R and context 4 expect" >&2
-  echo "      ~/.local/share/remmina/group_rdp_pythian_172-16-10-156.remmina (recreate it in Remmina)." >&2
-fi

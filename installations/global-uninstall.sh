@@ -14,3 +14,6 @@ uninstall_if_installed() {
 uninstall_if_installed signal-desktop
 uninstall_if_installed spotify
 uninstall_if_installed code-insiders-bin
+# The 172.16.10.156 box was the last Remmina session and is retired.
+uninstall_if_installed remmina-git
+uninstall_if_installed remmina

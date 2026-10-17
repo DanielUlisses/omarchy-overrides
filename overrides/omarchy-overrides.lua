@@ -155,7 +155,7 @@ end
 
 -- Main monitor
 place("org.omarchy.herdr", 1) -- the herdr terminal started below
-place("code", 2)
+place("code|com\\.microsoft\\.VSCode", 2) -- VS Code sets com.microsoft.VSCode on Wayland; older builds "code"
 place("dev.zed.Zed", 2)
 
 -- Left monitor

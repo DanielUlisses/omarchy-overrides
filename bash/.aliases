@@ -307,3 +307,7 @@ copilot_call_safe() {
 alias ccall='copilot_call_safe'
 
 alias review='herdr plugin action invoke open --plugin persiyanov.reviewr'
+
+alias haiku='claude --model haiku'
+alias sonnet='claude --model sonnet'
+alias opus='claude --model opus'

@@ -1,0 +1,13 @@
+#!/bin/bash
+# cliamp as a drop-down on SUPER+SHIFT+ALT+M (Omarchy's "Music TUI" key, rebound): a
+# terminal parked on special:music, floating in the middle of the screen. First press
+# starts it, later presses show and hide it; music keeps playing while hidden. Same shape
+# as bin/omarchy-secretary. Placement rule: overrides/omarchy-overrides.lua.
+set -u
+
+if ! hyprctl clients -j | jq -e 'any(.[]; .class == "cliamp")' >/dev/null; then
+  setsid uwsm-app -- xdg-terminal-exec --app-id=cliamp -e cliamp >/dev/null 2>&1 &
+  # Already showing special:music: the new window maps into it, nothing to toggle.
+  hyprctl monitors -j | jq -e 'any(.[]; .specialWorkspace.name == "special:music")' >/dev/null && exit 0
+fi
+hyprctl dispatch 'hl.dsp.workspace.toggle_special("music")' >/dev/null

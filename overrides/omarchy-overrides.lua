@@ -211,6 +211,18 @@ o.window("^(secretary)$", {
 })
 o.bind("SUPER + SHIFT + S", "Secretary", "/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-secretary")
 
+-- Music drop-down (bin/omarchy-music): cliamp on its own special workspace, floating and
+-- centered, so it plays hidden and comes back on the same key. Replaces Omarchy's
+-- SUPER+SHIFT+ALT+M "Music TUI", which launched or focused cliamp on a normal workspace.
+o.window("^(cliamp)$", {
+	workspace = "special:music silent",
+	float = true,
+	center = true,
+	size = { "(monitor_w*0.6)", "(monitor_h*0.6)" },
+})
+hl.unbind("SUPER + SHIFT + ALT + M")
+o.bind("SUPER + SHIFT + ALT + M", "Music", "/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-music")
+
 -- Always running: chat lands hidden on its special workspace, herdr on 1.
 o.launch_on_start("slack --enable-features=UseOzonePlatform --ozone-platform=wayland")
 o.launch_on_start("teams-for-linux")

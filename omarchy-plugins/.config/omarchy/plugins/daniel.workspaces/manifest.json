@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "daniel.workspaces",
+  "name": "My Workspaces",
+  "version": "1.0.0",
+  "author": "Daniel",
+  "description": "Workspace indicators showing only each monitor's own workspaces",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "My Workspaces",
+    "description": "Workspace indicators showing only each monitor's own workspaces",
+    "category": "Compositor",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.workspaces"
+  }
+}

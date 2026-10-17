@@ -18,6 +18,7 @@ bash ./installations/setup-cloudpc.sh
 
 bash ./installations/install-overrides.sh
 bash ./installations/install-theme.sh
+bash ./installations/install-claude-acc.sh
 bash ./installations/install-plugins.sh
 
 bash ./installations/global-uninstall.sh

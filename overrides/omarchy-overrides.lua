@@ -220,6 +220,18 @@ o.window("^(omawrite)$", {
 	size = { 700, 550 },
 })
 
+-- Secretary drop-down (bin/omarchy-secretary): the daily assistant on its own special
+-- workspace, floating across the top like the Windows Win+Ctrl+S one. SUPER+ALT+S was
+-- Omarchy's "Move window to scratchpad"; SUPER+S (toggle scratchpad) stays.
+o.window("^(secretary)$", {
+	workspace = "special:secretary silent",
+	float = true,
+	size = { "(monitor_w*0.9)", "(monitor_h*0.6)" },
+	move = { "(monitor_w*0.05)", "(monitor_h*0.03)" },
+})
+hl.unbind("SUPER + ALT + S")
+o.bind("SUPER + ALT + S", "Secretary", "/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-secretary")
+
 for i = 1, 4 do
 	o.bind("SUPER + F" .. i, "Context " .. i, context .. " switch " .. i)
 	o.bind("SUPER + SHIFT + F" .. i, "Launch context " .. i, context .. " launch " .. i)

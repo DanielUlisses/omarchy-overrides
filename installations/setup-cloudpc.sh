@@ -12,13 +12,14 @@ mkdir -p "$AVD"
 chmod 700 "$AVD"
 
 # client <TAB> workspace (where its Entra login window gets parked) -- matches the
-# cloudpc-<client> rules in overrides/omarchy-overrides.lua.
+# cloudpc-<client> rules in overrides/omarchy-overrides.lua. Always rewritten: these are
+# layout, not secrets, and a stale one parks the login on a workspace nobody looks at.
 while IFS=$'\t' read -r client ws; do
-  [ -f "$AVD/$client.ws" ] || echo "$ws" >"$AVD/$client.ws"
+  echo "$ws" >"$AVD/$client.ws"
 done <<'EOF'
-f5	41
-lanvera	42
-bss	43
+lanvera	6
+bss	7
+f5	8
 EOF
 
 # Lanvera's host answers 0x52E unless the domain is empty -- see bin/omarchy-cloudpc.

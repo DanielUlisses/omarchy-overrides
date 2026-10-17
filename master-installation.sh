@@ -24,5 +24,9 @@ bash ./installations/install-plugins.sh
 bash ./installations/global-uninstall.sh
 bash ./bin/run-cmd-stow.sh
 bash ./installations/setup-hyprmoncfg.sh
+bash ./installations/configure-dynamic-island.sh
+
+# Last: the theme extras and plugins above set their own fonts; this puts one font back everywhere.
+bash ./installations/apply-fonts.sh
 
 echo "Omarchy overrides installation completed."

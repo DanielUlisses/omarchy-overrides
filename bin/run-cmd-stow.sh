@@ -40,7 +40,7 @@ backup_if_needed "${HOME}/.config/hyprmoncfg/profiles"
 
 # Real dirs, so stow links the files inside rather than the whole dir: otherwise gh would
 # write hosts.yml (auth token) and hyprmoncfg its state straight into the repo.
-mkdir -p "${HOME}/.config/gh" "${HOME}/.config/git" "${HOME}/.config/hyprmoncfg"
+mkdir -p "${HOME}/.config/gh" "${HOME}/.config/git" "${HOME}/.config/hyprmoncfg" "${HOME}/.config/cliamp"
 
 # -t is required: ~/.omarchy-overrides is a symlink, and stow would otherwise target the
 # parent of the real repo path instead of $HOME.
@@ -51,3 +51,4 @@ stow -t "${HOME}" bash
 stow -t "${HOME}" gh
 stow -t "${HOME}" git
 stow -t "${HOME}" hyprmoncfg
+stow -t "${HOME}" cliamp # config only; tokens and cache stay out of the repo

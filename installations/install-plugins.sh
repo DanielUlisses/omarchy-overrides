@@ -17,10 +17,11 @@ PLUGINS_DIR="$HOME/.config/omarchy/plugins"
 plugins() {
   cat <<'EOF'
 hass	https://github.com/konradk/hass.git	-	-	--section center --index 0
-njpatel.omapager	https://github.com/njpatel/omapager.git	-	-	--section center --after omarchy.indicators
+omarchy-dynamic-island	https://github.com/Arjun010011/omarchy-dynamic-island.git	-	-	-
 omamail	https://github.com/huacnlee/omamail.git	-	-	--section center --after omarchy.clock
 tobiasz-p.next-event	https://github.com/DanielUlisses/next-event.git	dev	https://github.com/tobiasz-p/next-event.git	--section center --after omamail
 claude-acc.usage	https://github.com/DanielUlisses/claude-acc-shell.git	-	-	--section right --after omarchy.tray
+jankeesvw.herdr	https://github.com/jankeesvw/omarchy-herdr.git	-	-	--section right --after omarchy.tray
 crmne.hyprmoncfg	https://github.com/crmne/omarchy-hyprmoncfg.git	-	-	--section right --after omarchy.audio
 io.github.sirjul1337.lock-explorer	https://github.com/SirJul1337/omarchy-lock-explorer.git	-	-	-
 EOF
@@ -31,9 +32,11 @@ DISABLE=(
   omarchy.lock       # -> io.github.sirjul1337.lock-explorer
   omarchy.agents     # -> claude-acc.usage
 
-  # omapager is a full replacement notification service, not just a bar widget: the
-  # built-in has to go or both daemons fight over the org.freedesktop.Notifications bus.
-  omarchy.notifications # -> njpatel.omapager
+  # The island is a full replacement notification service (same IPC as the built-in, so
+  # SUPER+comma and bin/omarchy-context meeting keep working): the built-in has to go or
+  # both fight over the org.freedesktop.Notifications bus. Its settings are applied later,
+  # by configure-dynamic-island.sh, once hyprmoncfg knows which monitor is the main one.
+  omarchy.notifications # -> omarchy-dynamic-island
 )
 
 # Packages the plugins shell out to.

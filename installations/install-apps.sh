@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-# FreeRDP (the cloud PCs), Solaar (Logitech devices) and Claude Desktop.
+# FreeRDP (the cloud PCs), Solaar (Logitech devices), Claude Desktop, Zen (the work
+# browser, one space per client) and Zed.
 
 set -euo pipefail
 
@@ -39,3 +40,17 @@ yay -S --noconfirm --needed solaar
 
 echo "Installing Claude Desktop..."
 yay -S --noconfirm --needed claude-desktop
+
+# Zen spaces and containers live in the Zen profile, not here: sign in to Zen sync, or
+# recreate one space per client (each with its own container) on a new machine.
+echo "Installing Zen Browser..."
+yay -S --noconfirm --needed zen-browser-bin
+
+echo "Installing Zed..."
+yay -S --noconfirm --needed zed
+
+# cliamp's YouTube Music provider signs in with Chrome's cookies through yt-dlp, which
+# needs secretstorage to fetch Chrome's cookie key from the GNOME keyring. Without it
+# most cookies stay encrypted and YouTube treats you as signed out.
+echo "Installing yt-dlp keyring support for cliamp..."
+yay -S --noconfirm --needed yt-dlp python-secretstorage

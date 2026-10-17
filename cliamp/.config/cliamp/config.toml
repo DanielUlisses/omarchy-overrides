@@ -1,0 +1,9 @@
+# cliamp opens straight into YouTube Music.
+provider = "ytmusic"
+
+# Signed in by reusing the personal Chrome profile's YouTube session through yt-dlp, so no
+# Google OAuth app is needed. Switch accounts by signing in to music.youtube.com in that
+# profile (or point this at another profile, e.g. "chrome:Profile 1").
+[ytmusic]
+# "+gnomekeyring" because yt-dlp otherwise guesses the wrong keyring and decrypts nothing.
+cookies_from = "chrome+gnomekeyring:Default"

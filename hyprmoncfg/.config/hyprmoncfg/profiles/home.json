@@ -81,7 +81,7 @@
   "workspaces": {
     "enabled": true,
     "strategy": "manual",
-    "max_workspaces": 4,
+    "max_workspaces": 10,
     "group_size": 4,
     "monitor_order": [
       "samsung electric company|lf24t35|hx5t101956",
@@ -112,73 +112,38 @@
         "output_name": "DP-6"
       },
       {
-        "workspace": "10",
-        "output_key": "chimei innolux corporation|0x151e",
-        "output_name": "eDP-1",
-        "default": true,
-        "persistent": true
-      },
-      {
-        "workspace": "21",
+        "workspace": "5",
         "output_key": "samsung electric company|lf24t35|hx5t101012",
         "output_name": "DP-5",
         "default": true,
         "persistent": true
       },
       {
-        "workspace": "22",
+        "workspace": "6",
         "output_key": "samsung electric company|lf24t35|hx5t101012",
         "output_name": "DP-5"
       },
       {
-        "workspace": "23",
+        "workspace": "7",
         "output_key": "samsung electric company|lf24t35|hx5t101012",
         "output_name": "DP-5"
       },
       {
-        "workspace": "24",
+        "workspace": "8",
         "output_key": "samsung electric company|lf24t35|hx5t101012",
         "output_name": "DP-5"
       },
       {
-        "workspace": "31",
-        "output_key": "samsung electric company|lf24t35|hx5t101012",
-        "output_name": "DP-5"
+        "workspace": "9",
+        "output_key": "chimei innolux corporation|0x151e",
+        "output_name": "eDP-1",
+        "default": true,
+        "persistent": true
       },
       {
-        "workspace": "32",
-        "output_key": "samsung electric company|lf24t35|hx5t101012",
-        "output_name": "DP-5"
-      },
-      {
-        "workspace": "33",
-        "output_key": "samsung electric company|lf24t35|hx5t101012",
-        "output_name": "DP-5"
-      },
-      {
-        "workspace": "34",
-        "output_key": "samsung electric company|lf24t35|hx5t101012",
-        "output_name": "DP-5"
-      },
-      {
-        "workspace": "41",
-        "output_key": "samsung electric company|lf24t35|hx5t101012",
-        "output_name": "DP-5"
-      },
-      {
-        "workspace": "42",
-        "output_key": "samsung electric company|lf24t35|hx5t101012",
-        "output_name": "DP-5"
-      },
-      {
-        "workspace": "43",
-        "output_key": "samsung electric company|lf24t35|hx5t101012",
-        "output_name": "DP-5"
-      },
-      {
-        "workspace": "44",
-        "output_key": "samsung electric company|lf24t35|hx5t101012",
-        "output_name": "DP-5"
+        "workspace": "10",
+        "output_key": "chimei innolux corporation|0x151e",
+        "output_name": "eDP-1"
       }
     ]
   },

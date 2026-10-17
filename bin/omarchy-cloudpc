@@ -13,8 +13,7 @@
 #
 # The window class is forced via SDL_APP_ID so each client gets its own stable app_id
 # (cloudpc-bss, cloudpc-f5, ...). Without it SDL picks its own and every cloud PC
-# would share one class, which is the same trap chrome-* falls into -- see the note in
-# omarchy-context about why chrome windows have to be placed by script.
+# would share one class, and the per-client workspace rules could not tell them apart.
 #
 # Known limitation: connecting costs TWO browser logins, one for the gateway token and
 # one for the per-host AVD access token. FreeRDP does not cache them between runs.
@@ -91,11 +90,11 @@ set -euo pipefail
 
 CLIENT="${1:?usage: omarchy-cloudpc <client>   (e.g. bss)}"
 RDP="$HOME/.local/share/avd/${CLIENT}.rdp"
-# Default to whichever monitor hyprmoncfg pins the comms rows (21..43) to. Connector
-# names swap between machines (DP-5 here is DP-6 on hpc001); descriptions do not.
+# Default to whichever monitor hyprmoncfg pins the cloud PC workspaces (6..8) to. Connector
+# names swap between machines and docks; descriptions do not.
 MONITOR="${2:-}"
 if [ -z "$MONITOR" ]; then
-	target=$(hyprctl workspacerules -j 2>/dev/null | jq -r 'first(.[]|select(.workspaceString=="21")|.monitor // empty)' 2>/dev/null || true)
+	target=$(hyprctl workspacerules -j 2>/dev/null | jq -r 'first(.[]|select(.workspaceString=="6")|.monitor // empty)' 2>/dev/null || true)
 	case "$target" in
 	desc:*) MONITOR=$(hyprctl monitors -j 2>/dev/null | jq -r --arg d "${target#desc:}" 'first(.[]|select(.description==$d)|.name)' 2>/dev/null || true) ;;
 	*) MONITOR="$target" ;;

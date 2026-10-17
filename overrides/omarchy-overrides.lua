@@ -1,5 +1,5 @@
 -- Monitor configuration
--- Per-client context workflow lives at the bottom of this file + bin/omarchy-context.
+-- Desk layout (fixed workspaces per monitor) lives at the bottom of this file + bin/omarchy-context.
 
 hl.env("GDK_SCALE", "1")
 hl.env("GDK_DPI_SCALE", "1.25")
@@ -16,51 +16,34 @@ hl.env("__GLX_VENDOR_LIBRARY_NAME", "mesa")
 -- ~/.config/hypr/hyprland.lua, i.e. after this file, so anything declared here loses.
 -- Edit the layout in the hyprmoncfg panel / TUI, or in ~/.config/hyprmoncfg/profiles/.
 --
--- The layout the rest of this file assumes, kept in the "Home" profile:
---   DP-6 (Main, middle)  1..4   dev, one per context
---   eDP-1 (right)        10     Chromium / Pythian calendar+email, never context-switched
---   DP-5 (Third, left)   one app per workspace, in three rows, because DP-5 is portrait
---                        and two tiled windows on a 1080-wide panel are unusable:
---
---              ctx 1 Pythian   ctx 2 Lanvera   ctx 3 BSS        ctx 4 Personal
---   2n browser 21 chrome       22 chrome       23 chrome        24 chrome
---   3n chat    31 slack        32 teams        33 teams (BSS)   34 chrome (admin)
---   4n cloudpc 41 freerdp      42 freerdp      43 freerdp       -
---
--- The whole 4n row is native FreeRDP now, via bin/omarchy-cloudpc: 41 is the F5 Windows
--- 365 Cloud PC, 42 Lanvera, 43 BSS. Cloud PCs are named for the sub-client rather than
--- the context -- 41 sits in ctx 1 (Pythian) but is F5's, because Pythian will bring more.
---
--- Workspaces 5..9 are deliberately unruled and open on the focused monitor.
+-- The layout the rest of this file assumes, kept in the "Home" and "Work" profiles.
+-- Connector names swap between machines (and docks), so the profiles pin workspaces by
+-- monitor *description*; the roles are what matter:
+--   main (landscape, middle)  1 herdr   2 VS Code + Zed   3-4 free, for sharing in a call
+--   left (portrait)           5 Zen     6 Lanvera VM      7 BSS VM      8 F5 (Pythian) VM
+--   laptop (right)            9 meetings (Chrome, Meet, Zoom)   10 free
+-- Chat apps (Slack, both Teams) own no workspace: each sits on its own special workspace
+-- and is only toggled in to reply. See bin/omarchy-context.
 --
 -- Fallback if hyprmoncfg is ever removed (`hyprmoncfg unmanage`): uncomment the block
--- below. Positions are the pre-hyprmoncfg ones and no longer match the current desk.
+-- below and fix the connector names for that machine.
 --
--- hl.monitor({ output = "DP-5", mode = "1920x1080@75", position = "0x0", scale = 1 })
--- hl.monitor({ output = "DP-6", mode = "1920x1080@75", position = "1920x0", scale = 1 })
--- hl.monitor({ output = "eDP-1", mode = "1920x1080@60", position = "3840x0", scale = 1 })
---
--- for i = 1, 4 do
--- 	hl.workspace_rule({ workspace = tostring(i), monitor = "DP-6", default = i == 1 })
--- 	hl.workspace_rule({ workspace = tostring(20 + i), monitor = "DP-5", default = i == 1 })
--- end
--- for i = 1, 3 do
--- 	hl.workspace_rule({ workspace = tostring(30 + i), monitor = "DP-5" })
--- end
--- hl.workspace_rule({ workspace = "10", monitor = "eDP-1", default = true })
+-- for i = 1, 4 do hl.workspace_rule({ workspace = tostring(i), monitor = "DP-5", default = i == 1 }) end
+-- for i = 5, 8 do hl.workspace_rule({ workspace = tostring(i), monitor = "DP-6", default = i == 5 }) end
+-- hl.workspace_rule({ workspace = "9", monitor = "eDP-1", default = true })
+-- hl.workspace_rule({ workspace = "10", monitor = "eDP-1" })
 
--- General hygiene against apps popping to front uninvited. Not what Focus mode
+-- General hygiene against apps popping to front uninvited. Not what Meeting mode
 -- (SUPER+F9) is for -- that one is about silencing notifications.
 hl.config({ misc = { focus_on_activate = false } })
 
 -- Omarchy's default (looknfeel.lua) warps the cursor to the newly focused window on
--- every workspace change. That fights the SUPER+F<n> context switcher: repeated
--- presses walk DP-5 through its rows and hop DP-6, yanking the mouse off whatever
+-- every workspace change. That fights keyboard-driven jumps to another monitor (SUPER+F<n>
+-- to a cloud PC on the left monitor, SUPER+<n> anywhere), yanking the mouse off whatever
 -- monitor it was actually sitting on each time. warp_on_change_workspace=0 only kills
 -- the "move to last focused window" warp though -- Hyprland separately re-centers the
--- cursor onto a monitor whenever it becomes active (e.g. bin/omarchy-context's
--- `switch` ends every SUPER+F<n> press with `go(dev-workspace)` to land keyboard focus
--- on DP-6), and that one is gated by no_warps instead. Both have to be off.
+-- cursor onto a monitor whenever it becomes active, and that one is gated by no_warps
+-- instead. Both have to be off.
 hl.config({ cursor = { warp_on_change_workspace = 0, no_warps = true } })
 
 -- Drop shift:both_capslock_cancel from Omarchy's default kb_options
@@ -87,10 +70,10 @@ hl.config({
 
 -- Omarchy's default SUPER+scroll (mouse_down/mouse_up) binds use "e+1"/"e-1", which
 -- cycles the single global, ID-sorted list of every currently open workspace -- not
--- the workspaces on whichever monitor the mouse is over. DP-5's row workspaces
--- (21..43) sit in that list right next to DP-6's (1..4) and eDP-1's (10), so scrolling
--- past DP-5's first/last open workspace (e.g. past Slack on 31) walks straight onto
--- DP-6 or eDP-1 instead of wrapping within DP-5. "m+1"/"m-1" is the monitor-scoped
+-- the workspaces on whichever monitor the mouse is over. The left monitor's 5..8 sit in
+-- that list right next to the main monitor's 1..4 and the laptop's 9..10, so scrolling
+-- past the left monitor's last open workspace (e.g. past the F5 VM on 8) walks straight
+-- onto the laptop instead of wrapping. "m+1"/"m-1" is the monitor-scoped
 -- equivalent: it only cycles workspaces on the currently focused monitor, so with
 -- follow_mouse (default) it stays on whichever monitor the cursor is actually over.
 hl.unbind("SUPER + mouse_down")
@@ -106,7 +89,7 @@ hl.window_rule({
 })
 
 -- Application keybindings (overrides omarchy defaults)
-local cloudpc = "/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-cloudpc"
+local context = "/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-context"
 
 hl.unbind("SUPER + SHIFT + SLASH")
 hl.unbind("SUPER + SHIFT + A")
@@ -121,24 +104,15 @@ hl.unbind("SUPER + SHIFT + S")
 hl.unbind("SUPER + SHIFT + W")
 hl.unbind("SUPER + SHIFT + Y")
 
-o.bind("SUPER + SHIFT + B", "Browser", 'uwsm app -- google-chrome-stable --profile-directory="Default" --class=chrome-personal')
+-- Zen is the work browser (one space + container per client). Chrome stays the system
+-- default: links from chat and calendar open there, on the laptop (see the rules below).
+o.bind("SUPER + SHIFT + B", "Zen", context .. " zen")
 o.bind("SUPER + E", "Editor", { omarchy = "editor" })
 o.bind("SUPER + SHIFT + E", "Email", "omarchy shell shell toggle omamail '{}'")
 o.bind("SUPER + BACKSLASH", "Passwords", "uwsm app -- 1password --quick-access")
 o.bind("SUPER + SHIFT + BACKSLASH", "1Password", "uwsm app -- 1password")
 o.bind("SUPER + SHIFT + Y", "YouTube", 'omarchy-launch-webapp "https://youtube.com/" --profile-directory="Default"')
--- Cloud PCs, native FreeRDP via bin/omarchy-cloudpc. Each connect costs two browser
--- logins (gateway token, then per-host token); FreeRDP does not cache them.
-o.bind("SUPER + SHIFT + R", "F5 Cloud PC", cloudpc .. " f5")
-o.bind("SUPER + SHIFT + ALT + R", "BSS Cloud PC", cloudpc .. " bss")
 o.bind("SUPER + SHIFT + M", "Meet", 'omarchy-launch-webapp "https://meet.google.com/" --profile-directory="Profile 1"')
-o.bind("SUPER + SHIFT + T", "Teams", "uwsm app -- teams-for-linux")
-o.bind(
-	"SUPER + SHIFT + ALT + T",
-	"Teams (BSS)",
-	'uwsm app -- teams-for-linux --class=teams-personal --user-data-dir="/home/daniel/.config/teams-personal"'
-)
-o.bind("SUPER + SHIFT + S", "Slack", "uwsm app -- slack --enable-features=UseOzonePlatform --ozone-platform=wayland")
 o.bind(
 	"SUPER + SHIFT + W",
 	"WhatsApp",
@@ -165,48 +139,54 @@ o.bind(
 	'omarchy-launch-webapp "https://pythian.atlassian.net/jira/apps/fa75e928-007a-4af4-9530-76503bcd4cba/ea7fda46-2015-4367-bd93-992fbf0c58ca/my-work/week?type=LIST" --profile-directory="Profile 1"'
 )
 o.bind("SUPER + CTRL + M", "Next Event", "omarchy-shell shell toggle tobiasz-p.next-event")
-o.bind("SUPER + SHIFT + L", "Lanvera Cloud PC", cloudpc .. " lanvera")
 
 --------------------------------------------------------------------------------
--- Per-client contexts
+-- Desk layout: fixed workspaces, one job each
 --------------------------------------------------------------------------------
--- Chrome profiles as they actually exist in ~/.config/google-chrome/Local State:
---   Default = daniel (personal)   Profile 1 = pythian.com   Profile 2 = codingband.com (Lanvera)
---   Profile 3 = BSS               Profile 4 = ulissestech.com (admin / accounting)
+-- See the layout at the top of this file. Clients are split inside the apps (Zen spaces
+-- + containers, herdr workspaces per devbox), not across workspaces.
 
-local context = "/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-context"
-
--- Placement. `silent` so launching one context's stack never yanks focus out of another.
+-- Placement. `silent` so an app starting in the background never yanks focus.
 -- Match on class ONLY: adding a `title` to the match table stops the workspace
 -- assignment firing at map time (verified on Hyprland 0.56.2).
 local function place(class, workspace)
 	o.window("^(" .. class .. ")$", { workspace = workspace .. " silent" })
 end
 
--- Chat row (3n). Kept in sync by hand with the 3n entries in bin/omarchy-context.
-place("slack", 31)
-place("teams-for-linux", 32) -- default Teams instance == Lanvera (Pythian is on Slack)
-place("teams-personal", 33) -- BSS Teams; class/data-dir keep the old "personal" name on purpose
+-- Main monitor
+place("org.omarchy.herdr", 1) -- the herdr terminal started below
+place("code", 2)
+place("dev.zed.Zed", 2)
+
+-- Left monitor
+place("zen", 5)
+-- Cloud PCs: native FreeRDP via bin/omarchy-cloudpc, which forces SDL_APP_ID=cloudpc-<client>
+-- so each one gets its own stable app_id. Named for the sub-client: F5 is Pythian's.
+place("cloudpc-lanvera", 6)
+place("cloudpc-bss", 7)
+place("cloudpc-f5", 8)
+
+-- Laptop: meetings. Chrome is the system default browser, so meeting links (Zoom, Meet)
+-- from chat or calendar open here. Plain Chrome windows are all `google-chrome` now that
+-- nothing passes --class any more. The Meet and Zoom web apps get their own
+-- `chrome-<host>__...` app_id; the other web apps (WhatsApp, ChatGPT...) stay unruled.
+place("google-chrome", 9)
+place("chrome-meet\\.google\\.com__.*", 9)
+place("chrome-.*zoom\\.us__.*", 9)
 place("chromium", 10)
 
--- NO rules for the client Chrome windows. Chrome runs one process for all profiles
--- sharing ~/.config/google-chrome, so every normal window reports the app_id of
--- whichever profile started the process -- a rule on chrome-pythian would swallow the
--- Lanvera and Personal windows too. bin/omarchy-context places them instead.
-
--- Cloud PC row (4n). Native FreeRDP sessions, launched by bin/omarchy-cloudpc, which
--- forces SDL_APP_ID=cloudpc-<client> so each one gets its own stable app_id. That is
--- what makes plain class rules work here -- unlike the chrome-* windows below, which
--- share a process and have to be placed by script.
-place("cloudpc-f5", 41) -- named for the sub-client, not ctx 1's client (Pythian)
-place("cloudpc-lanvera", 42)
-place("cloudpc-bss", 43)
+-- Chat apps: each on its own special workspace, shown only to reply (bin/omarchy-context
+-- chat). A Teams call or Slack huddle runs where its app is; toggling it away keeps the
+-- call going.
+place("slack", "special:slack")
+place("teams-for-linux", "special:teams") -- default Teams instance == Lanvera (Pythian is on Slack)
+place("teams-personal", "special:teams-bss") -- BSS Teams; class/data-dir keep the old "personal" name on purpose
 
 -- Every cloud PC's Entra login is the same class with the same title, and it maps
 -- wherever the pointer is, so with two connects in flight you cannot tell which login
 -- belongs to which host. bin/omarchy-cloudpc parks each one on its client's workspace by
 -- matching the window's pid back to its own sdl-freerdp3. Float it so it stays a dialog
--- on top of that row instead of tiling into it and shrinking the session window.
+-- on top of that workspace instead of tiling into it and shrinking the session window.
 o.window("^(freerdp-webview-aad-helper)$", {
 	float = true,
 	center = true,
@@ -221,25 +201,75 @@ o.window("^(omawrite)$", {
 })
 
 -- Secretary drop-down (bin/omarchy-secretary): the daily assistant on its own special
--- workspace, floating across the top like the Windows Win+Ctrl+S one. SUPER+ALT+S was
--- Omarchy's "Move window to scratchpad"; SUPER+S (toggle scratchpad) stays.
+-- workspace, floating across the top like the Windows Win+Ctrl+S one. SUPER+SHIFT+S was
+-- Omarchy's Google Maps (unbound above).
 o.window("^(secretary)$", {
 	workspace = "special:secretary silent",
 	float = true,
 	size = { "(monitor_w*0.9)", "(monitor_h*0.6)" },
 	move = { "(monitor_w*0.05)", "(monitor_h*0.03)" },
 })
+o.bind("SUPER + SHIFT + S", "Secretary", "/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-secretary")
+
+-- Always running: chat lands hidden on its special workspace, herdr on 1.
+o.launch_on_start("slack --enable-features=UseOzonePlatform --ozone-platform=wayland")
+o.launch_on_start("teams-for-linux")
+o.launch_on_start("teams-for-linux --class=teams-personal --user-data-dir=/home/daniel/.config/teams-personal")
+o.exec_on_start("omarchy-launch-tui herdr")
+
+-- A focused cloud PC asks for keyboard-shortcut inhibition, so without dont_inhibit these
+-- keys go to Windows instead (SUPER+F1 opened the remote browser's help). Only these
+-- binds escape; every other SUPER chord still reaches the VM.
+local escape = { dont_inhibit = true }
+o.bind("SUPER + F1", "Lanvera Cloud PC", context .. " vm lanvera", escape)
+o.bind("SUPER + F2", "BSS Cloud PC", context .. " vm bss", escape)
+o.bind("SUPER + F3", "F5 (Pythian) Cloud PC", context .. " vm f5", escape)
+o.bind("SUPER + SHIFT + F1", "Cycle left monitor", context .. " cycle", escape)
+-- Chat on SUPER+ALT + the home row: S Slack (Pythian), A Lanvera Teams, D BSS Teams.
+-- SUPER+ALT+S was Omarchy's "Move window to scratchpad"; SUPER+S (toggle scratchpad) stays.
 hl.unbind("SUPER + ALT + S")
-o.bind("SUPER + ALT + S", "Secretary", "/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-secretary")
-
-for i = 1, 4 do
-	o.bind("SUPER + F" .. i, "Context " .. i, context .. " switch " .. i)
-	o.bind("SUPER + SHIFT + F" .. i, "Launch context " .. i, context .. " launch " .. i)
-end
-o.bind("SUPER + F5", "Comms <-> Cloud PC", context .. " toggle")
-o.bind("SUPER + F9", "Focus mode", context .. " focus")
+o.bind("SUPER + ALT + S", "Slack", context .. " chat slack", escape)
+o.bind("SUPER + ALT + A", "Teams (Lanvera)", context .. " chat teams", escape)
+o.bind("SUPER + ALT + D", "Teams (BSS)", context .. " chat teams-bss", escape)
+o.bind("SUPER + F9", "Meeting mode", context .. " meeting", escape)
 o.bind("SUPER + N", "Quick notes", context .. " notes")
-o.bind("SUPER + SHIFT + Q", "Quit context apps", context .. " quit")
 
--- Known limitation: undocked (eDP-1 only) collapses 1..4/21..33 onto the laptop panel
--- and the F-key switching stops making sense. Use SUPER+1..9 directly there.
+-- Mouse side buttons: in Zen they cycle spaces (Zen's own CTRL+ALT+Left/Right). A bound
+-- button is swallowed for every app, so elsewhere they are re-sent as ALT+Left/Right,
+-- which is back/forward in Chrome, VS Code and Zed. Terminals get nothing: ALT+arrows
+-- there are word motions or herdr keys, not navigation.
+-- Down/up split as in Omarchy's bindings/clipboard.lua (send_shortcut can leave keys stuck).
+local function send_once(mods, key)
+	hl.dispatch(hl.dsp.send_key_state({ mods = mods, key = key, state = "down" }))
+	hl.timer(function()
+		hl.dispatch(hl.dsp.send_key_state({ mods = mods, key = key, state = "up" }))
+	end, { timeout = 50, type = "oneshot" })
+end
+
+local function is_terminal(window)
+	for _, tag in ipairs(window.tags or {}) do
+		if tag:gsub("%*$", "") == "terminal" then
+			return true
+		end
+	end
+	return false
+end
+
+local function side_button(key)
+	return function()
+		local window = hl.get_active_window()
+		if not window then
+			return
+		elseif window.class == "zen" then
+			send_once("CTRL ALT", key)
+		elseif not is_terminal(window) then
+			send_once("ALT", key)
+		end
+	end
+end
+
+o.bind("mouse:275", "Back / previous Zen space", side_button("Left"))
+o.bind("mouse:276", "Forward / next Zen space", side_button("Right"))
+
+-- Undocked (laptop only) every workspace collapses onto the laptop panel; SUPER+1..0
+-- and the F-keys still work, there is just one screen to show them on.

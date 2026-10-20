@@ -8,6 +8,10 @@
 #                 the laptop; it only takes a connector name, and those swap per machine
 #   reserveSpace  false: float over windows instead of shrinking them
 # Its font is set by apply-fonts.sh, with everything else.
+# Calendars are not set here: the .ics links are secret. Add them in the island (calendar
+# › settings button: paste a link, label, colour, Chrome profile per calendar); they are
+# kept in ~/.config/omarchy/dynamic-island/{calendars,prefs}.json -- copy that folder
+# over from another machine to bring them along.
 
 set -euo pipefail
 

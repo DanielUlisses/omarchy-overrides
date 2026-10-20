@@ -12,14 +12,28 @@ set -euo pipefail
 PLUGINS_DIR="$HOME/.config/omarchy/plugins"
 
 # id <TAB> git url <TAB> branch (- = default) <TAB> upstream url (- = none) <TAB> placement
-# Placement is passed to `omarchy plugin enable`; - enables without placing (non-bar).
+# Placement is passed to `omarchy plugin enable`; - enables without placing (non-bar);
+# off installs it but leaves it disabled.
 # Order matters: --after anchors must be enabled before the plugin that uses them.
+#
+# Forks (an upstream url is set) run from our own branch on the fork and are never sent
+# upstream: `origin` is the fork, `upstream` the original, local `main` tracks
+# upstream/main. To take upstream work: git fetch upstream, fast-forward main, review
+# `git log main..upstream/main`, then merge (or cherry-pick) into the branch -- or drop it.
+#
+#   omarchy-dynamic-island  dev: the calendar rebuilt to replace NextEvent -- big feeds
+#                           trimmed, real time zones, labelled/coloured feeds, declined
+#                           invites hidden, keyword filter, a settings screen, and meetings
+#                           opened in the Chrome profile picked per calendar. Calendars and
+#                           those picks live in ~/.config/omarchy/dynamic-island/ (not in
+#                           this repo: the .ics links are secret).
+#   tobiasz-p.next-event    kept installed but off: the island's calendar replaces it.
 plugins() {
   cat <<'EOF'
 hass	https://github.com/konradk/hass.git	-	-	--section center --index 0
-omarchy-dynamic-island	https://github.com/Arjun010011/omarchy-dynamic-island.git	-	-	-
+omarchy-dynamic-island	https://github.com/DanielUlisses/omarchy-dynamic-island.git	dev	https://github.com/Arjun010011/omarchy-dynamic-island.git	-
 omamail	https://github.com/huacnlee/omamail.git	-	-	--section center --after omarchy.clock
-tobiasz-p.next-event	https://github.com/DanielUlisses/next-event.git	dev	https://github.com/tobiasz-p/next-event.git	--section center --after omamail
+tobiasz-p.next-event	https://github.com/DanielUlisses/next-event.git	dev	https://github.com/tobiasz-p/next-event.git	off
 claude-acc.usage	https://github.com/DanielUlisses/claude-acc-shell.git	-	-	--section right --after omarchy.tray
 jankeesvw.herdr	https://github.com/jankeesvw/omarchy-herdr.git	-	-	--section right --after omarchy.tray
 crmne.hyprmoncfg	https://github.com/crmne/omarchy-hyprmoncfg.git	-	-	--section right --after omarchy.audio
@@ -47,6 +61,49 @@ if ! command -v claude-acc >/dev/null 2>&1 && [ ! -x "$HOME/.claude-switch/bin/c
   echo "         Install it from https://github.com/Nemo-Illusionist/claude-code-account-switcher" >&2
 fi
 
+# Point a checkout at its fork: origin = the fork, upstream = the original, our branch
+# checked out and local main tracking upstream/main. Also moves a checkout that was
+# cloned from the original (the Tsukiyo theme adds the island that way) over to the fork.
+# github.com/owner/repo, whether written https://…(.git) or git@github.com:…
+repo_of() { sed -E 's#^(https?://|git@)##; s#:#/#; s#\.git$##; s#/$##' <<<"$1"; }
+
+use_fork() {
+  local dir=$1 url=$2 branch=$3 upstream=$4
+  if [ "$(repo_of "$(git -C "$dir" remote get-url origin 2>/dev/null)")" != "$(repo_of "$url")" ]; then
+    if [ -n "$(git -C "$dir" status --porcelain)" ]; then
+      echo "WARNING: $dir has local changes; not switching it to $url." >&2
+      return
+    fi
+    echo "Switching $(basename "$dir") to $url..."
+    git -C "$dir" remote remove upstream 2>/dev/null || true
+    git -C "$dir" remote rename origin upstream
+    git -C "$dir" remote add origin "$url"
+  fi
+  if ! git -C "$dir" remote get-url upstream >/dev/null 2>&1; then
+    git -C "$dir" remote add upstream "$upstream"
+  elif [ "$(repo_of "$(git -C "$dir" remote get-url upstream)")" != "$(repo_of "$upstream")" ]; then
+    git -C "$dir" remote set-url upstream "$upstream"
+  fi
+  git -C "$dir" fetch -q origin
+  git -C "$dir" fetch -q upstream
+  if [ "$branch" != "-" ] && [ "$(git -C "$dir" branch --show-current)" != "$branch" ]; then
+    if git -C "$dir" show-ref -q --verify "refs/heads/$branch"; then
+      git -C "$dir" checkout -q "$branch" # never reset a local branch: it may hold unpushed work
+    else
+      git -C "$dir" checkout -q -b "$branch" --track "origin/$branch"
+    fi
+  fi
+  # main follows upstream; an existing one is only re-pointed, never moved.
+  if git -C "$dir" show-ref -q --verify refs/remotes/upstream/main; then
+    if git -C "$dir" show-ref -q --verify refs/heads/main; then
+      git -C "$dir" branch -q --set-upstream-to=upstream/main main
+    else
+      git -C "$dir" branch -q --track main upstream/main
+    fi
+  fi
+  omarchy-shell shell rescanPlugins >/dev/null
+}
+
 while IFS=$'\t' read -r id url branch upstream placement; do
   dir="$PLUGINS_DIR/$id"
 
@@ -55,17 +112,12 @@ while IFS=$'\t' read -r id url branch upstream placement; do
   else
     echo "Installing plugin $id from $url..."
     omarchy plugin add "$url" --yes
-
-    # Forks: switch to the working branch on the fork, keep the original as `upstream`.
-    [ "$upstream" = "-" ] || git -C "$dir" remote add upstream "$upstream"
-    if [ "$branch" != "-" ]; then
-      git -C "$dir" fetch origin "$branch"
-      git -C "$dir" checkout -B "$branch" --track "origin/$branch"
-      omarchy-shell shell rescanPlugins >/dev/null
-    fi
   fi
+  [ "$upstream" = "-" ] || use_fork "$dir" "$url" "$branch" "$upstream"
 
-  if [ "$placement" = "-" ]; then
+  if [ "$placement" = "off" ]; then
+    omarchy plugin disable "$id"
+  elif [ "$placement" = "-" ]; then
     omarchy plugin enable "$id"
   else
     # shellcheck disable=SC2086 # placement is a list of flags

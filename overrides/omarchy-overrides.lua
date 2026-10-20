@@ -88,6 +88,20 @@ hl.window_rule({
 	focus_on_activate = false,
 })
 
+-- oma-cast on SUPER+SPACE instead of Omarchy's app launcher (SUPER+ALT+SPACE still opens
+-- Omarchy's apps menu). Only once installations/install-oma-cast.sh has linked the plugin,
+-- which waits for Omarchy 4.5: binding a global shortcut nothing registered would leave
+-- SUPER+SPACE dead. hl.dsp.global reaches the plugin directly, no process per keypress.
+do
+	local manifest = os.getenv("HOME") .. "/.config/omarchy/plugins/typecraft.oma-cast/manifest.json"
+	local file = io.open(manifest, "r")
+	if file then
+		file:close()
+		hl.unbind("SUPER + SPACE")
+		o.bind("SUPER + SPACE", "oma-cast launcher", hl.dsp.global("oma-cast:toggle"))
+	end
+end
+
 -- Application keybindings (overrides omarchy defaults)
 local context = "/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-context"
 

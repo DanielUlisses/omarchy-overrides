@@ -20,6 +20,7 @@ bash ./installations/install-overrides.sh
 bash ./installations/install-theme.sh
 bash ./installations/install-claude-acc.sh
 bash ./installations/install-plugins.sh
+bash ./installations/install-oma-cast.sh
 
 bash ./installations/global-uninstall.sh
 bash ./bin/run-cmd-stow.sh

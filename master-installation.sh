@@ -24,6 +24,7 @@ bash ./installations/install-oma-cast.sh
 
 bash ./installations/global-uninstall.sh
 bash ./bin/run-cmd-stow.sh
+bash ./installations/setup-call-audio.sh
 bash ./installations/setup-hyprmoncfg.sh
 bash ./installations/configure-dynamic-island.sh
 

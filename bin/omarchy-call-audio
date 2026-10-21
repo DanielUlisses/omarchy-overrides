@@ -1,0 +1,430 @@
+#!/bin/bash
+# Checks the call audio policy in wireplumber/.config/wireplumber/wireplumber.conf.d/
+# call-audio-routing.conf: which mic and speaker a call gets right now, and anything
+# overriding the priorities (a manual pick, saved settings, an app holding the
+# Bluetooth headset in call mode).
+#   omarchy-call-audio              report; exits 1 if a check fails
+#   omarchy-call-audio test [secs]  also record you through every mic at once (5s) and
+#                                   play the default mic back on the default speaker
+#   omarchy-call-audio monitor      hear the wired headset mic live in its earphones and
+#                                   log mic level, L/R output and jack sense until Ctrl-C
+#                                   (for hunting a flaky cable)
+#   omarchy-call-audio reset        drop manual default picks so the priorities decide
+set -u
+
+REPO_DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+REPO_CONF_DIR="$REPO_DIR/wireplumber/.config/wireplumber/wireplumber.conf.d"
+CONF_DIR="$HOME/.config/wireplumber/wireplumber.conf.d"
+
+fails=0
+ok() { printf '  \e[32mok\e[0m    %s\n' "$*"; }
+warn() { printf '  \e[33mwarn\e[0m  %s\n' "$*"; }
+fail() { printf '  \e[31mFAIL\e[0m  %s\n' "$*"; fails=$((fails + 1)); }
+section() { printf '\n\e[1m%s\e[0m\n' "$*"; }
+
+role() {
+  case "$1" in
+    alsa_input.usb-046d_0825_*) echo "webcam mic" ;;
+    alsa_input.usb-*) echo "USB mic" ;;
+    bluez_input.*) echo "BT headset mic" ;;
+    alsa_input.pci-*Mic1*) echo "laptop digital mic" ;;
+    alsa_input.pci-*Mic2*) echo "wired headset mic" ;;
+    bluez_output.*) echo "BT headset" ;;
+    alsa_output.usb-*) echo "USB speaker" ;;
+    alsa_output.pci-*Headphones*) echo "wired headset" ;;
+    alsa_output.pci-*) echo "laptop output" ;;
+    *) echo "other" ;;
+  esac
+}
+
+DUMP=""
+refresh() { DUMP="$(pw-dump)"; }
+
+# "priority<TAB>node.name<TAB>description", best first, as WirePlumber ranks them.
+nodes() {
+  jq -r --arg c "$1" '.[] | select(.type == "PipeWire:Interface:Node" and .info.props."media.class" == $c)
+    | .info.props | "\(."priority.session" // ."priority.driver" // 0)\t\(."node.name")\t\(."node.description")"' \
+    <<<"$DUMP" | sort -t$'\t' -k1,1nr
+}
+
+meta() {
+  jq -r --arg k "$1" '.[] | select(.type == "PipeWire:Interface:Metadata" and .props."metadata.name" == "default")
+    | .metadata[] | select(.key == $k) | .value.name // empty' <<<"$DUMP"
+}
+
+prio_of() {
+  jq -r --arg n "$1" '.[] | select(.type == "PipeWire:Interface:Node" and .info.props."node.name" == $n)
+    | .info.props."priority.session" // empty' <<<"$DUMP" | head -1
+}
+
+bt_profile() {
+  pactl -f json list cards | jq -r '.[] | select(.name | startswith("bluez_card.")) | .active_profile' | head -1
+}
+
+# Apps recording from the headset's mic node: each one keeps the headset in HFP.
+bt_mic_users() {
+  jq -r '
+    (map(select(.type == "PipeWire:Interface:Node")) | map({key: (.id | tostring), value: .info.props}) | from_entries) as $n
+    | .[] | select(.type == "PipeWire:Interface:Link")
+    | select(($n[.info."output-node-id" | tostring]."node.name" // "") | startswith("bluez_input."))
+    | $n[.info."input-node-id" | tostring] | select(. != null and ."media.class" == "Stream/Input/Audio")
+    | ."application.name" // ."node.name"' <<<"$DUMP" | sort -u | paste -sd, -
+}
+
+# Prints the device table and checks the default against the best-priority device.
+check_default() {
+  local class="$1" kind="$2" list best actual configured
+  list="$(nodes "$class")"
+  actual="$(meta "default.audio.$kind")"
+  configured="$(meta "default.configured.audio.$kind")"
+  if [ -z "$list" ]; then
+    fail "no $class device at all"
+    return
+  fi
+  while IFS=$'\t' read -r prio name desc; do
+    local mark="  "
+    [ "$name" = "$actual" ] && mark="* "
+    printf '    %s%-5s %-19s %s\n' "$mark" "$prio" "$(role "$name")" "$desc"
+  done <<<"$list"
+  best="$(head -1 <<<"$list" | cut -f2)"
+  if [ "$actual" = "$best" ]; then
+    ok "calls use the $(role "$actual") (highest priority)"
+  elif [ -n "$configured" ] && [ "$actual" = "$configured" ]; then
+    warn "manual pick $(role "$actual") is overriding the $(role "$best"); 'omarchy-call-audio reset' to let priority decide"
+  else
+    fail "default is $(role "$actual") ($actual), policy says $(role "$best")"
+  fi
+}
+
+# Every app recording right now and the mic it is actually linked to. An app that
+# picked a device itself (Teams settings -> Devices) ignores the default.
+check_app_mics() {
+  local src="$1" app linked
+  while IFS=$'\t' read -r app linked; do
+    if [ -z "$linked" ]; then
+      fail "$app is recording from nothing (stream not linked to any mic)"
+    elif [ "$linked" != "$src" ]; then
+      warn "$app records from the $(role "$linked"), not the default $(role "$src") (device picked in the app?)"
+    else
+      ok "$app records from the $(role "$linked")"
+    fi
+  done < <(jq -r '
+    (map(select(.type == "PipeWire:Interface:Node")) | map({key: (.id | tostring), value: .info.props}) | from_entries) as $n
+    | [.[] | select(.type == "PipeWire:Interface:Link") | .info] as $links
+    | .[] | select(.type == "PipeWire:Interface:Node" and .info.props."media.class" == "Stream/Input/Audio")
+    | select((.info.props."application.name" // "") | test("Peak Detect") | not)
+    | .id as $id
+    | ([$links[] | select(."input-node-id" == $id) | $n[."output-node-id" | tostring]."node.name"] | unique) as $src
+    | "\(.info.props."application.name" // .info.props."node.name")\t\($src | first // "")"' <<<"$DUMP" | sort -u)
+}
+
+report() {
+  refresh
+
+  section "Config"
+  local f name missing=0
+  for f in "$REPO_CONF_DIR"/*.conf; do
+    name="$(basename "$f")"
+    if [ "$(readlink -f "$CONF_DIR/$name")" != "$(readlink -f "$f")" ]; then
+      fail "$name is not linked from the repo (bin/run-cmd-stow.sh)"
+      missing=1
+    fi
+  done
+  [ "$missing" = 0 ] && ok "WirePlumber confs linked from $REPO_CONF_DIR"
+  if wpctl settings node.restore-default-targets | grep -q 'Value: false'; then
+    ok "default-device history off"
+  else
+    fail "default-device history on: a saved setting or a stale WirePlumber wins (installations/setup-call-audio.sh)"
+  fi
+  if [ "$(prio_of "$(nodes Audio/Source | cut -f2 | grep -m1 '^alsa_input\.pci-.*Mic1')")" = 1100 ]; then
+    ok "priority rules loaded"
+  else
+    fail "priority rules not loaded: restart WirePlumber (systemctl --user restart wireplumber)"
+  fi
+
+  section "Microphone (* = what calls record from)"
+  check_default Audio/Source source
+  local src
+  src="$(meta default.audio.source)"
+  if wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null | grep -q MUTED; then
+    fail "default mic is muted"
+  fi
+  if [[ "$src" == alsa_input.pci-*Mic2* ]] &&
+    pactl -f json list sources | jq -e --arg n "$src" '.[] | select(.name == $n) | .ports | all(.availability == "not available")' >/dev/null; then
+    fail "jack mic is default but nothing is plugged into the jack"
+  fi
+  check_app_mics "$src"
+
+  section "Speaker"
+  check_default Audio/Sink sink
+  if wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{ exit !($2 < 0.25 || /MUTED/) }'; then
+    warn "default speaker is $(wpctl get-volume @DEFAULT_AUDIO_SINK@ | cut -d' ' -f2-): calls will be inaudible"
+  fi
+
+  section "Bluetooth headset"
+  local profile users
+  profile="$(bt_profile)"
+  if [ -z "$profile" ]; then
+    warn "not connected ($(bluetoothctl devices Paired 2>/dev/null | grep -c Device) devices paired)"
+  else
+    users="$(bt_mic_users)"
+    printf '    profile %s\n' "$profile"
+    if nodes Audio/Source | grep -q $'\tbluez_input\.'; then
+      ok "headset mic available"
+    else
+      fail "headset exposes no mic: bluetooth.autoswitch-to-headset-profile is off"
+    fi
+    if [ -n "$users" ]; then
+      printf '    in call mode for: %s\n' "$users"
+      [[ "$src" == alsa_input.usb-* ]] && warn "USB mic is default but $users still records from the headset, which keeps it in narrowband HFP"
+    elif [[ "$profile" == headset-head-unit* ]]; then
+      warn "headset stuck in HFP with nothing recording from it"
+    fi
+  fi
+}
+
+# Loudest 100ms window and the quietest 10% (noise floor: the gaps between words) in
+# dBFS. Speech sits well above the floor; a dead mic or a steady hum does not.
+levels() {
+  python3 -I -c '
+import math, struct, sys, wave
+w = wave.open(sys.argv[1])
+d = w.readframes(w.getnframes())
+s = struct.unpack("<%dh" % (len(d) // 2), d) or (0,)
+step = w.getframerate() // 10
+db = lambda v: -120 if v <= 0 else 20 * math.log10(v / 32768)
+win = [db(math.sqrt(sum(x * x for x in c) / len(c))) for c in (s[i:i + step] for i in range(0, len(s), step)) if c]
+win.sort()
+print("%.0f %.0f" % (win[-1], win[len(win) // 10]))' "$1"
+}
+
+record_test() {
+  local secs="${1:-5}" dir src profile_during="" start name
+  dir="$(mktemp -d)"
+  src="$(meta default.audio.source)"
+
+  section "Record test"
+  printf '    recording %ss from every mic at once: talk now, with a pause or two\n' "$secs"
+  start="$(date +%s)"
+  local -a pids=() names=()
+  while IFS=$'\t' read -r _ name _; do
+    pw-record --target "$name" --channels 1 --format s16 "$dir/${#names[@]}.wav" &
+    pids+=($!)
+    names+=("$name")
+  done < <(nodes Audio/Source)
+  sleep 2
+  profile_during="$(bt_profile)"
+  sleep "$((secs > 2 ? secs - 2 : 0))"
+  kill -INT "${pids[@]}"
+  wait "${pids[@]}" 2>/dev/null
+
+  local i loud floor mark verdict heard_default=0 heard_other=""
+  for i in "${!names[@]}"; do
+    read -r loud floor <<<"$(levels "$dir/$i.wav")"
+    mark="  "
+    [ "${names[$i]}" = "$src" ] && mark="* "
+    verdict="silent"
+    [ "$((loud - floor))" -ge 12 ] && [ "$loud" -ge -45 ] && verdict="hears you"
+    printf '    %s%-19s voice %4s dBFS  floor %4s dBFS  %s\n' "$mark" "$(role "${names[$i]}")" "$loud" "$floor" "$verdict"
+    if [ "$verdict" = "hears you" ]; then
+      if [ "${names[$i]}" = "$src" ]; then heard_default=1; else heard_other+="${heard_other:+, }$(role "${names[$i]}")"; fi
+    fi
+  done
+  if [ "$heard_default" = 1 ]; then
+    ok "default mic ($(role "$src")) hears you"
+    read -r loud floor <<<"$(levels "$dir/$(for i in "${!names[@]}"; do [ "${names[$i]}" = "$src" ] && echo "$i"; done).wav")"
+    # Mic volume drives the analog boost on the jack (UCM CaptureMasterElem): 100% is
+    # +30 dB, which clips speech and lifts the hiss.
+    [ "$loud" -ge -10 ] && warn "default mic is too hot (voice ${loud} dBFS, clipping): lower its volume (wpctl set-volume @DEFAULT_AUDIO_SOURCE@ 0.5)"
+  elif [ -n "$heard_other" ]; then
+    fail "default mic ($(role "$src")) hears nothing, but the $heard_other does"
+  else
+    fail "no mic heard you (did you talk? is a mute switch on?)"
+  fi
+  local wav="$dir/$(for i in "${!names[@]}"; do [ "${names[$i]}" = "$src" ] && echo "$i"; done).wav"
+
+  if [[ "$src" == bluez_input.* ]]; then
+    if [[ "$profile_during" == headset-head-unit* ]]; then
+      ok "headset switched to call mode ($profile_during) while recording"
+    else
+      fail "headset stayed in $profile_during while recording: it never opened its mic"
+    fi
+    sleep 3
+    [[ "$(bt_profile)" == a2dp* ]] && ok "headset back to A2DP after recording" ||
+      warn "headset still in $(bt_profile) 3s after recording"
+  fi
+  local errors
+  errors="$({ journalctl --user --since "@$start" --no-pager -q; journalctl -k --since "@$start" --no-pager -q; } 2>/dev/null |
+    grep -cE 'Failure in Bluetooth audio transport|corrupted SCO|SCO packet for unknown')"
+  [ "$errors" -gt 0 ] && fail "$errors Bluetooth transport/SCO errors in the log during the test"
+
+  printf '    playing it back on the %s\n' "$(role "$(meta default.audio.sink)")"
+  pw-play "$wav"
+  rm -rf "$dir"
+}
+
+# Live loop: wired headset mic -> its earphones, so a cable fault is heard as it happens,
+# plus a log that reads back afterwards. Keys mark what was heard: m mic cut, l left ear
+# cut, r right ear cut, o all ok again, t test tone left then right.
+monitor() {
+  local mic sink log
+  mic="$(nodes Audio/Source | cut -f2 | grep -m1 '^alsa_input\.pci-.*Mic2')"
+  sink="$(nodes Audio/Sink | cut -f2 | grep -m1 '^alsa_output\.pci-.*Headphones')"
+  if [ -z "$mic" ] || [ -z "$sink" ]; then
+    echo "wired headset not detected on the jack (no Mic2/Headphones node)" >&2
+    exit 1
+  fi
+  # Volume is cubic: 0.12 is about -55 dB, so a quiet setting reads as "can't hear anything".
+  local vol
+  vol="$(pactl -f json list sinks | jq -r --arg n "$sink" '.[] | select(.name == $n) | [.volume[].value] | max / 65536')"
+  if awk -v v="$vol" 'BEGIN { exit !(v < 0.25) }'; then
+    printf 'earphone volume is %.0f%%, too quiet to hear the loop; raise it (e.g. wpctl set-volume %s 0.4)\n\n' \
+      "$(awk -v v="$vol" 'BEGIN { print v * 100 }')" "$sink"
+  fi
+  log="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy-call-audio/monitor.log"
+  mkdir -p "$(dirname "$log")"
+  local code
+  read -r -d '' code <<'PY'
+import math, os, select, struct, subprocess, sys, termios, time, tty
+
+mic, sink, log_path = sys.argv[1:4]
+RATE = 16000
+CHUNK = RATE // 10  # 100ms
+
+def db(samples):
+    if not samples:
+        return -120.0
+    r = math.sqrt(sum(x * x for x in samples) / len(samples))
+    return -120.0 if r <= 0 else 20 * math.log10(r / 32768)
+
+def jacks():
+    out = {}
+    for name, key in (("Headphone Jack", "hp"), ("Mic Jack", "mic")):
+        r = subprocess.run(["amixer", "-c0", "cget", "iface=CARD,name=" + name], capture_output=True, text=True)
+        out[key] = "on" if "values=on" in r.stdout else "OFF"
+    return out
+
+def bar(v):
+    n = max(0, min(20, int((v + 70) / 3.5)))
+    return "#" * n + "." * (20 - n)
+
+log = open(log_path, "w", buffering=1)
+def event(msg):
+    line = "%s  EVENT  %s" % (time.strftime("%H:%M:%S"), msg)
+    log.write(line + "\n")
+    sys.stdout.write("\r\033[K" + line + "\n")
+
+loop = subprocess.Popen(["pw-loopback", "--capture-props", "target.object=%s node.description=cable-monitor-in" % mic,
+                         "--playback-props", "target.object=%s node.description=cable-monitor-out" % sink],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+rec_mic = subprocess.Popen(["parecord", "--raw", "--format=s16le", "--channels=1", "--rate=%d" % RATE, "-d", mic],
+                           stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+rec_out = subprocess.Popen(["parecord", "--raw", "--format=s16le", "--channels=2", "--rate=%d" % RATE, "-d", sink + ".monitor"],
+                           stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+buf = {rec_mic.stdout.fileno(): b"", rec_out.stdout.fileno(): b""}
+
+def tone():
+    def make(ch):
+        frames = []
+        for i in range(48000 // 2):
+            v = int(8000 * math.sin(2 * math.pi * 660 * i / 48000))
+            frames.append(struct.pack("<hh", v if ch == 0 else 0, v if ch == 1 else 0))
+        return b"".join(frames) + b"\0" * 4 * 12000
+    p = subprocess.Popen(["pw-play", "--raw", "--format", "s16", "--channels", "2", "--rate", "48000", "--target", sink, "-"],
+                         stdin=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    p.stdin.write(make(0) + make(1))
+    p.stdin.close()
+
+marks = {"m": "MARK mic cut", "l": "MARK left ear cut", "r": "MARK right ear cut", "o": "MARK all ok again"}
+log.write("cable monitor  mic=%s  out=%s\n" % (mic, sink))
+log.write("per second: mic min/max dBFS (100ms windows) | output sent L/R max dBFS | jack sense\n")
+print("Talk and you hear yourself in the P3. Move the cable around.")
+print("Keys: m mic cut, l left ear cut, r right ear cut, o ok again, t tone left->right, Ctrl-C stop")
+print("Log: " + log_path + "\n")
+
+state = jacks()
+event("start  headphone jack %s, mic jack %s" % (state["hp"], state["mic"]))
+fd = sys.stdin.fileno()
+old = termios.tcgetattr(fd)
+tty.setcbreak(fd)
+sec_mic, sec_l, sec_r = [], [], []
+last_sec = int(time.time())
+last_jack = 0.0
+mic_db = l_db = r_db = -120.0
+try:
+    while True:
+        ready, _, _ = select.select(list(buf) + [fd], [], [], 0.1)
+        for f in ready:
+            if f == fd:
+                k = os.read(fd, 1).decode(errors="ignore").lower()
+                if k in marks:
+                    event(marks[k])
+                elif k == "t":
+                    event("tone: LEFT ear then RIGHT ear")
+                    tone()
+                continue
+            data = os.read(f, 65536)
+            if not data:
+                raise SystemExit("recorder stopped")
+            buf[f] += data
+        m = buf[rec_mic.stdout.fileno()]
+        while len(m) >= CHUNK * 2:
+            s = struct.unpack("<%dh" % CHUNK, m[:CHUNK * 2]); m = m[CHUNK * 2:]
+            mic_db = db(s); sec_mic.append(mic_db)
+        buf[rec_mic.stdout.fileno()] = m
+        o = buf[rec_out.stdout.fileno()]
+        while len(o) >= CHUNK * 4:
+            s = struct.unpack("<%dh" % (CHUNK * 2), o[:CHUNK * 4]); o = o[CHUNK * 4:]
+            l_db, r_db = db(s[0::2]), db(s[1::2]); sec_l.append(l_db); sec_r.append(r_db)
+        buf[rec_out.stdout.fileno()] = o
+        now = time.time()
+        if now - last_jack >= 0.25:
+            last_jack = now
+            j = jacks()
+            for key, label in (("hp", "headphone jack"), ("mic", "mic jack")):
+                if j[key] != state[key]:
+                    event("%s %s -> %s" % (label, state[key], j[key]))
+            state = j
+        if int(now) != last_sec and sec_mic:
+            last_sec = int(now)
+            log.write("%s  mic %4.0f/%4.0f  out L %4.0f R %4.0f  hp %s mic %s\n" % (
+                time.strftime("%H:%M:%S"), min(sec_mic), max(sec_mic),
+                max(sec_l or [-120]), max(sec_r or [-120]), state["hp"], state["mic"]))
+            sec_mic, sec_l, sec_r = [], [], []
+        sys.stdout.write("\r\033[Kmic %s %4.0f   out L %4.0f R %4.0f   jack hp %s mic %s" % (
+            bar(mic_db), mic_db, l_db, r_db, state["hp"], state["mic"]))
+        sys.stdout.flush()
+except KeyboardInterrupt:
+    pass
+finally:
+    termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    for p in (loop, rec_mic, rec_out):
+        p.terminate()
+    event("stop")
+    print("\nLog: " + log_path)
+PY
+  python3 -I -c "$code" "$mic" "$sink" "$log"
+}
+
+case "${1:-}" in
+  "") report ;;
+  test) report; record_test "${2:-5}" ;;
+  monitor)
+    refresh
+    monitor
+    exit 0
+    ;;
+  reset)
+    wpctl clear-default
+    sleep 1
+    report
+    ;;
+  *)
+    echo "usage: omarchy-call-audio [test [secs] | monitor | reset]" >&2
+    exit 2
+    ;;
+esac
+
+echo
+[ "$fails" = 0 ] && echo "All checks passed." || echo "$fails check(s) failed."
+[ "$fails" = 0 ]

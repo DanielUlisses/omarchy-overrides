@@ -37,10 +37,13 @@ backup_if_needed "${HOME}/.aliases"
 # hyprmoncfg writes profiles into this directory, so stow links the whole directory:
 # new or edited profiles land in the repo.
 backup_if_needed "${HOME}/.config/hyprmoncfg/profiles"
+for conf in "${DOTFILES_REPO}"/wireplumber/.config/wireplumber/wireplumber.conf.d/*.conf; do
+  backup_if_needed "${HOME}/.config/wireplumber/wireplumber.conf.d/$(basename "${conf}")"
+done
 
 # Real dirs, so stow links the files inside rather than the whole dir: otherwise gh would
 # write hosts.yml (auth token) and hyprmoncfg its state straight into the repo.
-mkdir -p "${HOME}/.config/gh" "${HOME}/.config/git" "${HOME}/.config/hyprmoncfg" "${HOME}/.config/cliamp" "${HOME}/.config/omarchy/plugins"
+mkdir -p "${HOME}/.config/gh" "${HOME}/.config/git" "${HOME}/.config/hyprmoncfg" "${HOME}/.config/cliamp" "${HOME}/.config/omarchy/plugins" "${HOME}/.config/wireplumber/wireplumber.conf.d"
 
 # -t is required: ~/.omarchy-overrides is a symlink, and stow would otherwise target the
 # parent of the real repo path instead of $HOME.
@@ -53,3 +56,4 @@ stow -t "${HOME}" git
 stow -t "${HOME}" hyprmoncfg
 stow -t "${HOME}" cliamp # config only; tokens and cache stay out of the repo
 stow -t "${HOME}" omarchy-plugins # own shell plugins only; the rest of ~/.config/omarchy/plugins stays local
+stow -t "${HOME}" wireplumber # call audio policy; WirePlumber's own state stays in ~/.local/state

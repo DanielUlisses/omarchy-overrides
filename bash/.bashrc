@@ -28,9 +28,6 @@ export PATH="$HOME/.local/bin:$PATH"
 export ANDROID_HOME="$HOME/Android/Sdk"
 export EDITOR=code
 
-# Claude Code Account Switcher
-[ -x /home/daniel/.claude-switch/bin/claude-acc ] && eval "$('/home/daniel/.claude-switch/bin/claude-acc' init bash)"
-
 # druk
 export PATH=/home/daniel/.druk/bin:$PATH
 export DEVBOX_HOST=pve1

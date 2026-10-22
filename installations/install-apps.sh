@@ -38,6 +38,10 @@ pacman -Q freerdp >/dev/null 2>&1 || yay -S --noconfirm freerdp-git
 echo "Installing Solaar..."
 yay -S --noconfirm --needed solaar
 
+# Opens the island's meeting summaries and transcripts (markdownEditor setting).
+echo "Installing Typora..."
+yay -S --noconfirm --needed typora
+
 echo "Installing Claude Desktop..."
 yay -S --noconfirm --needed claude-desktop
 

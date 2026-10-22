@@ -1,5 +1,5 @@
 #!/bin/bash
-# cliamp as a drop-down on SUPER+SHIFT+ALT+M (Omarchy's "Music TUI" key, rebound): a
+# cliamp as a drop-down on SUPER+CTRL+M (in place of Omarchy's SUPER+SHIFT+ALT+M "Music TUI"): a
 # terminal parked on special:music, floating in the middle of the screen. First press
 # starts it, later presses show and hide it; music keeps playing while hidden. Same shape
 # as bin/omarchy-secretary. Placement rule: overrides/omarchy-overrides.lua.

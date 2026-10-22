@@ -132,7 +132,6 @@ o.bind(
 	"WhatsApp",
 	'omarchy-launch-webapp "https://web.whatsapp.com/" --profile-directory="Default"'
 )
--- SUPER+SHIFT+A is left free on purpose for a plugin (was Copilot; Omarchy's ChatGPT default stays unbound above).
 o.bind(
 	"SUPER + SHIFT + ALT + A",
 	"ChatGPT",
@@ -148,7 +147,19 @@ o.bind(
 	"Tempo",
 	'omarchy-launch-webapp "https://pythian.atlassian.net/jira/apps/fa75e928-007a-4af4-9530-76503bcd4cba/ea7fda46-2015-4367-bd93-992fbf0c58ca/my-work/week?type=LIST" --profile-directory="Profile 1"'
 )
-o.bind("SUPER + CTRL + M", "Next Event", "omarchy-shell shell toggle tobiasz-p.next-event")
+
+-- Dynamic Island assistant (bin: the plugin's island-ctl). Bound here rather than with
+-- `island-ctl keybinds --install`, which writes an untracked block into bindings.lua.
+-- SUPER+SHIFT+A was Copilot; Omarchy's ChatGPT default stays unbound above.
+local island = "/home/daniel/.local/bin/island-ctl"
+o.bind("SUPER + A", "Island Chat", island .. " chat")
+o.bind("SUPER + SHIFT + A", "Island agent home", island .. " home")
+o.bind("SUPER + ALT + U", "Island usage", island .. " usage")
+o.bind("SUPER + ALT + C", "Island calendar", island .. " calendar")
+o.bind("SUPER + ALT + Y", "Allow the waiting agent request", island .. " approve")
+o.bind("SUPER + ALT + N", "Deny the waiting agent request", island .. " deny")
+o.bind("SUPER + ALT + J", "Jump to the agent that needs you", island .. " jump")
+o.bind("SUPER + ALT + P", "Pin the island workspace", island .. " pin")
 
 --------------------------------------------------------------------------------
 -- Desk layout: fixed workspaces, one job each
@@ -223,7 +234,8 @@ o.bind("SUPER + SHIFT + S", "Secretary", "/home/daniel/repos/daniel/omarchy-over
 
 -- Music drop-down (bin/omarchy-music): cliamp on its own special workspace, floating and
 -- centered, so it plays hidden and comes back on the same key. Replaces Omarchy's
--- SUPER+SHIFT+ALT+M "Music TUI", which launched or focused cliamp on a normal workspace.
+-- SUPER+SHIFT+ALT+M "Music TUI", which launched or focused cliamp on a normal workspace;
+-- that key stays unbound and the drop-down lives on SUPER+CTRL+M (was NextEvent).
 o.window("^(cliamp)$", {
 	workspace = "special:music silent",
 	float = true,
@@ -231,7 +243,7 @@ o.window("^(cliamp)$", {
 	size = { "(monitor_w*0.6)", "(monitor_h*0.6)" },
 })
 hl.unbind("SUPER + SHIFT + ALT + M")
-o.bind("SUPER + SHIFT + ALT + M", "Music", "/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-music")
+o.bind("SUPER + CTRL + M", "Music", "/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-music")
 
 -- Always running: chat lands hidden on its special workspace, herdr on 1.
 o.launch_on_start("slack --enable-features=UseOzonePlatform --ozone-platform=wayland")

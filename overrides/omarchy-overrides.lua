@@ -132,11 +132,7 @@ o.bind(
 	"WhatsApp",
 	'omarchy-launch-webapp "https://web.whatsapp.com/" --profile-directory="Default"'
 )
-o.bind(
-	"SUPER + SHIFT + A",
-	"Copilot",
-	'omarchy-launch-webapp "https://copilot.microsoft.com" --profile-directory="Default"'
-)
+-- SUPER+SHIFT+A is left free on purpose for a plugin (was Copilot; Omarchy's ChatGPT default stays unbound above).
 o.bind(
 	"SUPER + SHIFT + ALT + A",
 	"ChatGPT",

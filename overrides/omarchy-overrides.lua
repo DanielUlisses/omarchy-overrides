@@ -125,27 +125,36 @@ o.bind("SUPER + E", "Editor", { omarchy = "editor" })
 o.bind("SUPER + SHIFT + E", "Email", "omarchy shell shell toggle omamail '{}'")
 o.bind("SUPER + BACKSLASH", "Passwords", "uwsm app -- 1password --quick-access")
 o.bind("SUPER + SHIFT + BACKSLASH", "1Password", "uwsm app -- 1password")
-o.bind("SUPER + SHIFT + Y", "YouTube", 'omarchy-launch-webapp "https://youtube.com/" --profile-directory="Default"')
-o.bind("SUPER + SHIFT + M", "Meet", 'omarchy-launch-webapp "https://meet.google.com/" --profile-directory="Profile 1"')
-o.bind(
-	"SUPER + SHIFT + W",
-	"WhatsApp",
-	'omarchy-launch-webapp "https://web.whatsapp.com/" --profile-directory="Default"'
-)
-o.bind(
-	"SUPER + SHIFT + ALT + A",
-	"ChatGPT",
-	'omarchy-launch-webapp "https://chatgpt.com" --profile-directory="Default"'
-)
-o.bind(
+
+-- Web apps focus their open window instead of opening a second one. Chrome names an --app
+-- window chrome-<host>__<path>-<profile>; omarchy-launch-or-focus matches the pattern between
+-- \b's, and "_" is a word character, so the pattern stops before the TLD ("chrome-youtube").
+-- It evals the launch command, hence the inner quotes (the URLs have "?", profiles spaces).
+local function webapp(key, name, url, profile)
+	local pattern = "chrome-" .. url:match("^https?://([^/]+)"):match("^(.*)%.[^.]+$")
+	o.bind(
+		key,
+		name,
+		string.format([[omarchy-launch-or-focus-webapp "%s" "'%s'" "--profile-directory='%s'"]], pattern, url, profile)
+	)
+end
+
+webapp("SUPER + SHIFT + Y", "YouTube", "https://youtube.com/", "Default")
+webapp("SUPER + SHIFT + M", "Meet", "https://meet.google.com/", "Profile 1")
+webapp("SUPER + SHIFT + W", "WhatsApp", "https://web.whatsapp.com/", "Default")
+webapp("SUPER + SHIFT + ALT + A", "ChatGPT", "https://chatgpt.com", "Default")
+webapp(
 	"SUPER + SHIFT + G",
 	"Gemini Enterprise",
-	'omarchy-launch-webapp "https://vertexaisearch.cloud.google.com/home/cid/a72e70f2-3125-4270-916e-2c345f90d694" --profile-directory="Profile 1"'
+	"https://vertexaisearch.cloud.google.com/home/cid/a72e70f2-3125-4270-916e-2c345f90d694",
+	"Profile 1"
 )
-o.bind(
-	"SUPER + SHIFT + H",
+webapp("SUPER + SHIFT + H", "Devbox HUB", "https://tk-hub.tailecb529.ts.net/", "Default")
+webapp(
+	"SUPER + SHIFT + J",
 	"Tempo",
-	'omarchy-launch-webapp "https://pythian.atlassian.net/jira/apps/fa75e928-007a-4af4-9530-76503bcd4cba/ea7fda46-2015-4367-bd93-992fbf0c58ca/my-work/week?type=LIST" --profile-directory="Profile 1"'
+	"https://pythian.atlassian.net/jira/apps/fa75e928-007a-4af4-9530-76503bcd4cba/ea7fda46-2015-4367-bd93-992fbf0c58ca/my-work/week?type=LIST",
+	"Profile 1"
 )
 
 -- Dynamic Island assistant (bin: the plugin's island-ctl). Bound here rather than with
@@ -179,6 +188,9 @@ end
 place("org.omarchy.herdr", 1) -- the herdr terminal started below
 place("code|com\\.microsoft\\.VSCode", 2) -- VS Code sets com.microsoft.VSCode on Wayland; older builds "code"
 place("dev.zed.Zed", 2)
+-- Devbox HUB web app (SUPER+SHIFT+H). Chrome names --app windows chrome-<host>__-<profile>
+-- itself; --class is ignored when the launch is handed to an already-running Chrome.
+place("chrome-tk-hub\\.tailecb529\\.ts\\.net__.*", 3)
 
 -- Left monitor
 place("zen", 5)

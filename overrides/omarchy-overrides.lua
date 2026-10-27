@@ -228,7 +228,6 @@ o.window("^(freerdp-webview-aad-helper)$", {
 })
 
 o.window("^(omawrite)$", {
-	workspace = "special:notes silent",
 	float = true,
 	center = true,
 	size = { 700, 550 },

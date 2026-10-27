@@ -6,7 +6,7 @@
 #   omarchy-context chat <slack|teams|teams-bss> show/hide that chat app, omamail-style
 #   omarchy-context zen                        focus Zen, or start it
 #   omarchy-context meeting                    toggle do-not-disturb; leaving it replays what came in
-#   omarchy-context notes                      omawrite overlay on special:notes
+#   omarchy-context notes                      focus omawrite, or start it
 #
 # Fixed workspaces, one job each -- no per-client contexts any more. The client split
 # lives inside the apps instead: Zen spaces + containers, herdr workspaces per devbox.
@@ -121,8 +121,12 @@ meeting)
   case "$state" in *off*) omarchy-shell -q notifications showHistory ;; esac
   ;;
 notes)
-  running omawrite || { setsid sh -c 'uwsm-app -- omawrite' >/dev/null 2>&1 & sleep 1; }
-  toggle_special notes
+  addr=$(hyprctl clients -j | jq -r 'first(.[]|select(.class=="omawrite")|.address) // empty')
+  if [ -n "$addr" ]; then
+    hyprctl dispatch "hl.dsp.focus({ window = \"address:$addr\" })" >/dev/null
+  else
+    setsid uwsm-app -- omawrite >/dev/null 2>&1 &
+  fi
   ;;
 --dry-run)
   [ "$(vm_ws lanvera)$(vm_ws bss)$(vm_ws f5)" = 678 ] || { echo "FAIL: cloud PCs should sit on 6/7/8"; exit 1; }

@@ -1,0 +1,5 @@
+# fifine USB mic: PipeWire uses a soft mixer for it (wireplumber fifine-soft-mixer.conf), so
+# the hardware capture gain stays wherever ALSA left it. Low (12/32 here) is too quiet, and
+# software gain then lifts noise with the voice. Pin it high on every plug-in, after
+# 90-alsa-restore.rules; the PipeWire source volume trims from there.
+ACTION=="add", SUBSYSTEM=="sound", KERNEL=="controlC*", ATTRS{idVendor}=="3142", ATTRS{idProduct}=="a010", RUN+="/usr/bin/amixer -q -c %n cset name='Mic Capture Volume' 28"

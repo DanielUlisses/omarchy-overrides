@@ -34,3 +34,6 @@ export EDITOR=code
 # druk
 export PATH=/home/daniel/.druk/bin:$PATH
 export DEVBOX_HOST=pve1
+
+# ticket-skill aliases — tkhelp lists them
+[ -f /home/daniel/.claude/skills/ticket-aliases.sh ] && . /home/daniel/.claude/skills/ticket-aliases.sh

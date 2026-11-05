@@ -220,6 +220,13 @@ SANITISED="$RUN_DIR/${CLIENT}.rdp"
 #                     swallowed the following argument -- Lanvera's /d: from its
 #                     .args file -- which silently restored the AzureAD domain and
 #                     broke the connect.
+# +auto-reconnect:    off by default, so any dropped connection closes the window with
+#                     nothing but "Network disconnect!" in the log. The first retry is
+#                     immediate, then up to 20 attempts 60s apart: /timeout above also sets
+#                     the retry delay (sdl_retry_dialog reads TcpConnectTimeout). A reconnect
+#                     reuses the gateway token from the first login, and arm.c never asks for
+#                     a new one, so it may fail once that has expired. This also makes the
+#                     ARM loop wait and retry for a deallocated VM instead of giving up.
 #
 # Local idle is handled implicitly: the SDL client suppresses the local screensaver by
 # default (SDL3 uses zwp_idle_inhibit_manager_v1, which Hyprland honours), so Omarchy
@@ -239,6 +246,7 @@ cmd=(sdl-freerdp3 "$SANITISED"
 	/clipboard
 	/timeout:60000
 	/prevent-session-lock:180
+	+auto-reconnect
 	"${extra[@]}")
 
 # OMARCHY_CLOUDPC_DEBUG=1 runs the client under gdb. It does two things:

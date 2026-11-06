@@ -15,8 +15,12 @@
 # (cloudpc-bss, cloudpc-f5, ...). Without it SDL picks its own and every cloud PC
 # would share one class, and the per-client workspace rules could not tell them apart.
 #
-# Known limitation: connecting costs TWO browser logins, one for the gateway token and
-# one for the per-host AVD access token. FreeRDP does not cache them between runs.
+# Known limitation: connecting costs TWO logins. The first is always the Entra browser
+# login for the gateway token. The second depends on the host pool: bss asks Entra again
+# for a per-host token, while f5 and lanvera ask for the Windows password in a FreeRDP
+# dialog. FreeRDP keeps neither between runs: its login webview has no cookie store and it
+# drops the refresh token. Lanvera's password can come from GNOME Keyring instead -- see
+# "Windows password" below.
 #
 # Per-host-pool auth differs, and the .rdp says how. Do NOT normalise these:
 #   bss      enablerdsaadauth:i:1                          -> token auth, no prompt
@@ -249,6 +253,34 @@ cmd=(sdl-freerdp3 "$SANITISED"
 	+auto-reconnect
 	"${extra[@]}")
 
+# Windows password: if GNOME Keyring holds one for this client, hand it to FreeRDP so the
+# host's credential dialog never appears. Store it once with
+#
+#   secret-tool store --label="Cloud PC lanvera" service omarchy-cloudpc client lanvera
+#
+# Only lanvera has one. f5 is left prompting, and bss authenticates with an Entra token
+# rather than a password. On these ARM connections the password is asked for in arm.c
+# (AuthenticateEx with AUTH_RDSTLS, only when no password is set) and is used solely to
+# build the encrypted redirect blob, so it does not ride into the ARM request the way
+# username:s:/domain:s: do. A reconnect reuses it as well, so only the browser login comes
+# back then. After a password change, store it again: a stale one fails the logon instead
+# of prompting.
+#
+# It goes in through /args-from:fd:3, never as /p: on the command line where ps and
+# /proc/<pid>/cmdline would show it. printf is a builtin, so it does not show up in any
+# argv on the way either. /args-from must be the ONLY argument, so every argument goes
+# through the pipe, one per line. An empty line ends the list early, and none of the
+# arguments here can be empty: the .args reader already skips blank lines.
+password=""
+command -v secret-tool >/dev/null &&
+	password=$(secret-tool lookup service omarchy-cloudpc client "$CLIENT" 2>/dev/null) || password=""
+if [ -n "$password" ]; then
+	echo "Windows password from GNOME Keyring"
+	exec 3< <(printf '%s\n' "${cmd[@]:1}" "/p:$password")
+	cmd=("${cmd[0]}" /args-from:fd:3)
+fi
+unset password
+
 # OMARCHY_CLOUDPC_DEBUG=1 runs the client under gdb. It does two things:
 #
 #   1. captures the malformed ARM body described at the top of this file. It is the only
@@ -335,6 +367,8 @@ else
 	stdbuf -oL -eL "${cmd[@]}" &
 fi
 rdp_pid=$!
+# The client has its own copy of the password pipe by now; nothing else needs one.
+exec 3<&-
 
 # The Entra login window is freerdp-webview-aad-helper for every client, with an
 # identical title, and it maps wherever the pointer happens to be. With two connects in

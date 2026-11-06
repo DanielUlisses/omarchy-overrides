@@ -33,5 +33,12 @@ for client in f5 lanvera bss; do
     missing=1
   fi
 done
+
+# Lanvera's Windows password lives in GNOME Keyring, not on disk -- see "Windows password"
+# in bin/omarchy-cloudpc. Without it the launcher still works and just prompts.
+if ! secret-tool lookup service omarchy-cloudpc client lanvera >/dev/null 2>&1; then
+  echo "NOTE: no lanvera password in the keyring, so it will prompt. To store it:" >&2
+  echo '  secret-tool store --label="Cloud PC lanvera" service omarchy-cloudpc client lanvera' >&2
+fi
 [ "$missing" = 0 ] && echo "Cloud PC files in place."
 exit 0

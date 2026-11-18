@@ -102,27 +102,63 @@ do
 	end
 end
 
--- Application keybindings (overrides omarchy defaults)
+--------------------------------------------------------------------------------
+-- Keyboard model, shared with the Mac (macos/aerospace.toml)
+--------------------------------------------------------------------------------
+-- On the MX Keys the key printed "cmd" sends ALT here and Command on the Mac, and the key
+-- printed "opt" sends SUPER here and Option on the Mac. Same physical key, same job:
+--   cmd + letter             app shortcuts, Mac style (copy, save, new tab...): see
+--                            "Mac-style app keys" at the end of this file
+--   cmd + TAB / cmd + 1..9   next window / tab N (Omarchy and the apps already do this)
+--   ctrl + LEFT/RIGHT        previous/next workspace on this monitor, like macOS Spaces
+--   opt (SUPER) + letter     open an app
+--   SUPER + SHIFT + letter   window and tiling (full screen, float, scratchpad, close...)
+--   SUPER + arrows / 1..9    focus / workspaces, unchanged
+-- This inverts Omarchy's defaults, which put apps on SUPER+SHIFT and window actions on
+-- SUPER. A focused cloud PC still gets every chord except the escaped ones further down.
 local context = "/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-context"
 
-hl.unbind("SUPER + SHIFT + SLASH")
-hl.unbind("SUPER + SHIFT + A")
+-- SUPER+A was bound twice (Omarchy's Select all and Island Chat both fired); cmd+A selects
+-- all now. SUPER+C/V/X (Omarchy's universal clipboard) stay while cmd+C/V/X take over.
+for _, key in ipairs({ "A", "F", "G", "J", "L", "M", "O", "P", "Q", "S", "T", "W" }) do
+	hl.unbind("SUPER + " .. key)
+end
+for _, key in ipairs({ "A", "B", "C", "D", "E", "F", "G", "M", "N", "O", "P", "Q", "S", "T", "W", "Y", "SLASH" }) do
+	hl.unbind("SUPER + SHIFT + " .. key)
+end
 hl.unbind("SUPER + SHIFT + ALT + A")
-hl.unbind("SUPER + SHIFT + B")
-hl.unbind("SUPER + SHIFT + C")
-hl.unbind("SUPER + SHIFT + E")
-hl.unbind("SUPER + SHIFT + G")
-hl.unbind("SUPER + SHIFT + M")
-hl.unbind("SUPER + SHIFT + N")
-hl.unbind("SUPER + SHIFT + S")
-hl.unbind("SUPER + SHIFT + W")
-hl.unbind("SUPER + SHIFT + Y")
 
--- Zen is the work browser (one space + container per client). Chrome stays the system
--- default: links from chat and calendar open there, on the laptop (see the rules below).
-o.bind("SUPER + SHIFT + B", "Zen", context .. " zen")
+-- Window and tiling: Omarchy's SUPER + letter actions, one SHIFT up.
+o.bind("SUPER + SHIFT + F", "Full screen", hl.dsp.window.fullscreen({ mode = "fullscreen" }))
+o.bind("SUPER + SHIFT + T", "Toggle window floating/tiling", hl.dsp.window.float({ action = "toggle" }))
+o.bind("SUPER + SHIFT + S", "Toggle scratchpad", hl.dsp.workspace.toggle_special("scratchpad"))
+o.bind(
+	"SUPER + SHIFT + ALT + S",
+	"Move window to scratchpad",
+	hl.dsp.window.move({ workspace = "special:scratchpad", follow = false })
+)
+o.bind("SUPER + SHIFT + G", "Toggle window grouping", hl.dsp.group.toggle())
+o.bind("SUPER + SHIFT + J", "Toggle window split", hl.dsp.layout("togglesplit"))
+o.bind("SUPER + SHIFT + L", "Cycle workspace layout", "omarchy-hyprland-workspace-layout-toggle")
+o.bind("SUPER + SHIFT + M", "Minimize window to the dock", "omarchy-hyprland-window-minimize")
+o.bind("SUPER + SHIFT + O", "Pop window out (float & pin)", "omarchy-hyprland-window-pop")
+o.bind("SUPER + SHIFT + P", "Pseudo window", hl.dsp.window.pseudo())
+o.bind("SUPER + SHIFT + Q", "Close window", hl.dsp.window.close())
+o.bind("SUPER + SHIFT + W", "Close window", hl.dsp.window.close())
+
+-- Apps on SUPER + letter. Zen is the work browser (one space + container per client).
+-- Chrome stays the system default: links from chat and calendar open there, on the laptop
+-- (see the rules below).
+o.bind("SUPER + B", "Zen", context .. " zen")
 o.bind("SUPER + E", "Editor", { omarchy = "editor" })
-o.bind("SUPER + SHIFT + E", "Email", "omarchy shell shell toggle omamail '{}'")
+o.bind("SUPER + ALT + E", "Email", "omarchy shell shell toggle omamail '{}'")
+o.bind("SUPER + F", "File manager", { omarchy = "nautilus" })
+o.bind("SUPER + O", "Obsidian", { launch = "obsidian", focus = "^obsidian$" })
+o.bind("SUPER + Q", "Calculator", "omacalc")
+o.bind("SUPER + T", "Activity", { tui = "btop" })
+if o.cmd_present("lazydocker") then
+	o.bind("SUPER + D", "Docker", { tui = "omarchy-launch-docker-tui" })
+end
 o.bind("SUPER + BACKSLASH", "Passwords", "uwsm app -- 1password --quick-access")
 o.bind("SUPER + SHIFT + BACKSLASH", "1Password", "uwsm app -- 1password")
 
@@ -139,19 +175,19 @@ local function webapp(key, name, url, profile)
 	)
 end
 
-webapp("SUPER + SHIFT + Y", "YouTube", "https://youtube.com/", "Default")
-webapp("SUPER + SHIFT + M", "Meet", "https://meet.google.com/", "Profile 1")
-webapp("SUPER + SHIFT + W", "WhatsApp", "https://web.whatsapp.com/", "Default")
+webapp("SUPER + Y", "YouTube", "https://youtube.com/", "Default")
+webapp("SUPER + M", "Meet", "https://meet.google.com/", "Profile 1")
+webapp("SUPER + W", "WhatsApp", "https://web.whatsapp.com/", "Default")
 webapp("SUPER + SHIFT + ALT + A", "ChatGPT", "https://chatgpt.com", "Default")
 webapp(
-	"SUPER + SHIFT + G",
+	"SUPER + G",
 	"Gemini Enterprise",
 	"https://vertexaisearch.cloud.google.com/home/cid/a72e70f2-3125-4270-916e-2c345f90d694",
 	"Profile 1"
 )
-webapp("SUPER + SHIFT + H", "Devbox HUB", "https://tk-hub.tailecb529.ts.net/", "Default")
+webapp("SUPER + H", "Devbox HUB", "https://tk-hub.tailecb529.ts.net/", "Default")
 webapp(
-	"SUPER + SHIFT + J",
+	"SUPER + J",
 	"Tempo",
 	"https://pythian.atlassian.net/jira/apps/fa75e928-007a-4af4-9530-76503bcd4cba/ea7fda46-2015-4367-bd93-992fbf0c58ca/my-work/week?type=LIST",
 	"Profile 1"
@@ -159,10 +195,10 @@ webapp(
 
 -- Dynamic Island assistant (bin: the plugin's island-ctl). Bound here rather than with
 -- `island-ctl keybinds --install`, which writes an untracked block into bindings.lua.
--- SUPER+SHIFT+A was Copilot; Omarchy's ChatGPT default stays unbound above.
+-- Agent home sits on SUPER+ALT+H since SUPER+SHIFT became the window layer.
 local island = "/home/daniel/.local/bin/island-ctl"
 o.bind("SUPER + A", "Island Chat", island .. " chat")
-o.bind("SUPER + SHIFT + A", "Island agent home", island .. " home")
+o.bind("SUPER + ALT + H", "Island agent home", island .. " home")
 o.bind("SUPER + ALT + U", "Island usage", island .. " usage")
 o.bind("SUPER + ALT + C", "Island calendar", island .. " calendar")
 o.bind("SUPER + ALT + M", "Island meetings (transcripts)", island .. " meetings")
@@ -234,15 +270,15 @@ o.window("^(omawrite)$", {
 })
 
 -- Secretary drop-down (bin/omarchy-secretary): the daily assistant on its own special
--- workspace, floating across the top like the Windows Win+Ctrl+S one. SUPER+SHIFT+S was
--- Omarchy's Google Maps (unbound above).
+-- workspace, floating across the top like the Windows Win+Ctrl+S one. SUPER+S was
+-- Omarchy's scratchpad, now on SUPER+SHIFT+S.
 o.window("^(secretary)$", {
 	workspace = "special:secretary silent",
 	float = true,
 	size = { "(monitor_w*0.9)", "(monitor_h*0.6)" },
 	move = { "(monitor_w*0.05)", "(monitor_h*0.03)" },
 })
-o.bind("SUPER + SHIFT + S", "Secretary", "/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-secretary")
+o.bind("SUPER + S", "Secretary", "/home/daniel/repos/daniel/omarchy-overrides/bin/omarchy-secretary")
 
 -- Music drop-down (bin/omarchy-music): cliamp on its own special workspace, floating and
 -- centered, so it plays hidden and comes back on the same key. Replaces Omarchy's
@@ -316,6 +352,105 @@ end
 
 o.bind("mouse:275", "Back / previous Zen space", side_button("Left"))
 o.bind("mouse:276", "Forward / next Zen space", side_button("Right"))
+
+--------------------------------------------------------------------------------
+-- Mac-style app keys on the key printed "cmd" (ALT here, Command on the Mac)
+--------------------------------------------------------------------------------
+-- Each ALT chord is re-sent as the Ctrl chord the focused app understands, the way
+-- Omarchy's universal clipboard does it for SUPER. Terminals get the Ctrl+Shift form where
+-- they have one, and the ALT chord itself where they do not, so Ctrl+Z, Ctrl+S, Ctrl+R...
+-- keep meaning suspend, XOFF and history search there. herdr runs inside a terminal window,
+-- so its window keeps tab/window keys to itself: Ctrl+Shift+T/W/N would act on the
+-- terminal around herdr instead of on herdr.
+-- Only the ALT letters listed here are taken; every other ALT chord (ALT+1..9 tab N,
+-- ALT+arrows, herdr's ALT keys, readline's ALT+B/F/D) still reaches the app untouched.
+local PASS = false
+
+-- { key after ALT, description, app chord, terminal chord, herdr chord (defaults to terminal) }
+local mac_keys = {
+	{ "C", "Copy", { "CTRL", "C" }, { "CTRL SHIFT", "C" } },
+	{ "V", "Paste", { "CTRL", "V" }, { "CTRL SHIFT", "V" } },
+	{ "X", "Cut", { "CTRL", "X" }, PASS },
+	{ "A", "Select all", { "CTRL", "A" }, { "CTRL SHIFT", "A" } },
+	{ "Z", "Undo", { "CTRL", "Z" }, PASS },
+	{ "SHIFT + Z", "Redo", { "CTRL SHIFT", "Z" }, PASS },
+	{ "S", "Save", { "CTRL", "S" }, PASS },
+	{ "F", "Find", { "CTRL", "F" }, PASS },
+	{ "G", "Find next", { "CTRL", "G" }, PASS },
+	{ "T", "New tab", { "CTRL", "T" }, { "CTRL SHIFT", "T" }, PASS },
+	{ "SHIFT + T", "Reopen closed tab", { "CTRL SHIFT", "T" }, PASS },
+	{ "W", "Close tab", { "CTRL", "W" }, { "CTRL SHIFT", "W" }, PASS },
+	{ "N", "New window", { "CTRL", "N" }, { "CTRL SHIFT", "N" }, PASS },
+	{ "L", "Address bar", { "CTRL", "L" }, PASS },
+	{ "R", "Reload", { "CTRL", "R" }, PASS },
+	{ "O", "Open file", { "CTRL", "O" }, PASS },
+	{ "P", "Print / quick open", { "CTRL", "P" }, PASS },
+	{ "SHIFT + P", "Command palette", { "CTRL SHIFT", "P" }, PASS },
+	{ "slash", "Toggle comment", { "CTRL", "slash" }, PASS },
+	{ "comma", "Settings", { "CTRL", "comma" }, PASS },
+	{ "equal", "Zoom in", { "CTRL", "equal" }, { "CTRL", "equal" } },
+	{ "minus", "Zoom out", { "CTRL", "minus" }, { "CTRL", "minus" } },
+	{ "0", "Reset zoom", { "CTRL", "0" }, { "CTRL", "0" } },
+	{ "bracketleft", "Back", { "ALT", "Left" }, PASS },
+	{ "bracketright", "Forward", { "ALT", "Right" }, PASS },
+}
+
+local function mac_key(spec)
+	local trigger, description, app, terminal, herdr = spec[1], spec[2], spec[3], spec[4], spec[5]
+	if herdr == nil then
+		herdr = terminal
+	end
+	local mods, key = "ALT", trigger
+	if trigger:match("^SHIFT %+ ") then
+		mods, key = "ALT SHIFT", trigger:sub(9)
+	end
+
+	o.bind("ALT + " .. trigger, description, function()
+		local window = hl.get_active_window()
+		local chord = app
+		if window and window.class == "org.omarchy.herdr" then
+			chord = herdr
+		elseif window and is_terminal(window) then
+			chord = terminal
+		end
+		if chord then
+			send_once(chord[1], chord[2])
+		else
+			send_once(mods, key)
+		end
+	end)
+end
+
+for _, spec in ipairs(mac_keys) do
+	mac_key(spec)
+end
+
+-- cmd+Q closes the window everywhere, as on the Mac.
+o.bind("ALT + Q", "Close window", hl.dsp.window.close())
+
+-- cmd+SPACE opens the launcher, like Spotlight. It was Omarchy's dictation toggle, which
+-- keeps SUPER+CTRL+X and push-to-talk on F9 (bindings.lua).
+hl.unbind("ALT + SPACE")
+do
+	local manifest = os.getenv("HOME") .. "/.config/omarchy/plugins/typecraft.oma-cast/manifest.json"
+	local file = io.open(manifest, "r")
+	if file then
+		file:close()
+		o.bind("ALT + SPACE", "oma-cast launcher", hl.dsp.global("oma-cast:toggle"))
+	else
+		o.bind("ALT + SPACE", "Omarchy menu", { menu = "root" })
+	end
+end
+
+-- Lock on the Mac's ⌃⌘Q keys (ctrl = CTRL, cmd = ALT here). Screenshots stay on the MX Keys
+-- screenshot key, which works on both machines.
+o.bind("CTRL + ALT + Q", "Lock system", "omarchy-system-lock")
+
+-- ctrl+LEFT/RIGHT walk the workspaces of the focused monitor, like macOS Spaces. Word
+-- jumps in apps and shells lose these keys; Ctrl+Shift+arrows (select by word) and herdr's
+-- Ctrl+Alt+arrows are different chords and keep working.
+o.bind("CTRL + LEFT", "Previous workspace on this monitor", hl.dsp.focus({ workspace = "m-1" }))
+o.bind("CTRL + RIGHT", "Next workspace on this monitor", hl.dsp.focus({ workspace = "m+1" }))
 
 -- Undocked (laptop only) every workspace collapses onto the laptop panel; SUPER+1..0
 -- and the F-keys still work, there is just one screen to show them on.

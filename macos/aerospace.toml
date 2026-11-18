@@ -1,0 +1,130 @@
+# AeroSpace on the Mac, laid out like Omarchy (overrides/omarchy-overrides.lua, "Keyboard
+# model"). Installed by macos/setup.sh, which links this file to
+# ~/.config/aerospace/aerospace.toml.
+#
+# Same MX Keys, same physical keys on both machines, no modifier swap anywhere:
+#   key printed "cmd"  Command here, ALT on Omarchy   -> app shortcuts (macOS does these itself)
+#   key printed "opt"  Option here, SUPER on Omarchy  -> windows and apps (this file, "alt-")
+#   key printed "ctrl" Control on both                -> ctrl-left/right walk workspaces
+#
+#   opt + arrows / 1..0          focus / workspace N             (SUPER + arrows / 1..0)
+#   opt + shift + arrows / 1..0  move window / to workspace N    (SUPER + SHIFT + ...)
+#   opt + letter                 open an app                     (SUPER + letter)
+#   opt + shift + letter         window and tiling               (SUPER + SHIFT + letter)
+#
+# The Mac stays on the U.S. layout, where opt+E, opt+I, opt+N, opt+U and opt+` are the
+# accent keys (é, î, ã, ü, à). Those five stay unbound so Portuguese still types; their
+# Omarchy apps (Editor on E, Quick notes on N) have no Mac binding.
+#
+# AeroSpace reads this file only: bindings not listed here do not exist (its defaults for
+# [mode.main.binding] are dropped once a config file is present).
+
+start-at-login = true
+after-startup-command = []
+
+enable-normalization-flatten-containers = true
+enable-normalization-opposite-orientation-for-nested-containers = true
+accordion-padding = 30
+default-root-container-layout = 'tiles'
+default-root-container-orientation = 'auto'
+
+# No cursor warp when focus moves to another monitor; Omarchy has warps off too.
+on-focused-monitor-changed = []
+
+automatically-unhide-macos-hidden-apps = false
+
+[key-mapping]
+preset = 'qwerty'
+
+[gaps]
+inner.horizontal = 8
+inner.vertical = 8
+outer.left = 8
+outer.bottom = 8
+outer.top = 8
+outer.right = 8
+
+[mode.main.binding]
+# Focus and move, as SUPER (+ SHIFT) + arrows on Omarchy.
+alt-left = 'focus left'
+alt-down = 'focus down'
+alt-up = 'focus up'
+alt-right = 'focus right'
+alt-shift-left = 'move left'
+alt-shift-down = 'move down'
+alt-shift-up = 'move up'
+alt-shift-right = 'move right'
+# SUPER + SHIFT + CTRL + arrows on Omarchy.
+alt-shift-ctrl-left = 'move-node-to-monitor left'
+alt-shift-ctrl-right = 'move-node-to-monitor right'
+alt-shift-ctrl-up = 'move-node-to-monitor up'
+alt-shift-ctrl-down = 'move-node-to-monitor down'
+
+# Resize, as SUPER + minus / equal.
+alt-minus = 'resize smart -50'
+alt-equal = 'resize smart +50'
+
+# Workspaces, as SUPER + 1..0 and SUPER + SHIFT + 1..0.
+alt-1 = 'workspace 1'
+alt-2 = 'workspace 2'
+alt-3 = 'workspace 3'
+alt-4 = 'workspace 4'
+alt-5 = 'workspace 5'
+alt-6 = 'workspace 6'
+alt-7 = 'workspace 7'
+alt-8 = 'workspace 8'
+alt-9 = 'workspace 9'
+alt-0 = 'workspace 10'
+alt-shift-1 = 'move-node-to-workspace 1'
+alt-shift-2 = 'move-node-to-workspace 2'
+alt-shift-3 = 'move-node-to-workspace 3'
+alt-shift-4 = 'move-node-to-workspace 4'
+alt-shift-5 = 'move-node-to-workspace 5'
+alt-shift-6 = 'move-node-to-workspace 6'
+alt-shift-7 = 'move-node-to-workspace 7'
+alt-shift-8 = 'move-node-to-workspace 8'
+alt-shift-9 = 'move-node-to-workspace 9'
+alt-shift-0 = 'move-node-to-workspace 10'
+
+# Walk the occupied workspaces of the focused monitor: ctrl + left/right as on Omarchy (and
+# as macOS Spaces did; setup.sh turns those Mission Control shortcuts off), and
+# opt + tab / opt + shift + tab as SUPER + TAB. opt + ctrl + tab is the former workspace.
+ctrl-left = 'list-workspaces --monitor focused --empty no | workspace --wrap-around --stdin prev'
+ctrl-right = 'list-workspaces --monitor focused --empty no | workspace --wrap-around --stdin next'
+alt-tab = 'list-workspaces --monitor focused --empty no | workspace --wrap-around --stdin next'
+alt-shift-tab = 'list-workspaces --monitor focused --empty no | workspace --wrap-around --stdin prev'
+alt-ctrl-tab = 'workspace-back-and-forth'
+
+# Window and tiling, as SUPER + SHIFT + letter on Omarchy.
+alt-shift-f = 'fullscreen'
+alt-shift-t = 'layout floating tiling'
+alt-shift-j = 'layout tiles horizontal vertical'
+alt-shift-g = 'layout accordion tiles'
+alt-shift-l = 'flatten-workspace-tree'
+alt-shift-m = 'macos-native-minimize'
+alt-shift-q = 'close'
+alt-shift-w = 'close'
+
+# Apps, as SUPER + letter on Omarchy. Web apps open as Chrome app windows.
+alt-enter = 'exec-and-forget open -na Ghostty || open -na Terminal'
+alt-b = 'exec-and-forget open -a Zen || open -a "Google Chrome"'
+alt-f = 'exec-and-forget open -a Finder'
+alt-o = 'exec-and-forget open -a Obsidian'
+alt-q = 'exec-and-forget open -a Calculator'
+alt-t = 'exec-and-forget open -a "Activity Monitor"'
+alt-backslash = 'exec-and-forget open -a 1Password'
+alt-w = 'exec-and-forget open -a WhatsApp || open -na "Google Chrome" --args --app=https://web.whatsapp.com/'
+alt-y = 'exec-and-forget open -na "Google Chrome" --args --app=https://youtube.com/'
+alt-m = 'exec-and-forget open -na "Google Chrome" --args --app=https://meet.google.com/'
+alt-g = 'exec-and-forget open -na "Google Chrome" --args --app=https://vertexaisearch.cloud.google.com/home/cid/a72e70f2-3125-4270-916e-2c345f90d694'
+alt-h = 'exec-and-forget open -na "Google Chrome" --args --app=https://tk-hub.tailecb529.ts.net/'
+alt-j = 'exec-and-forget open -na "Google Chrome" --args --app="https://pythian.atlassian.net/jira/apps/fa75e928-007a-4af4-9530-76503bcd4cba/ea7fda46-2015-4367-bd93-992fbf0c58ca/my-work/week?type=LIST"'
+
+# Service mode for the rare things: opt + shift + ; then a key.
+alt-shift-semicolon = 'mode service'
+
+[mode.service.binding]
+esc = ['reload-config', 'mode main']
+r = ['flatten-workspace-tree', 'mode main']
+f = ['layout floating tiling', 'mode main']
+backspace = ['close-all-windows-but-current', 'mode main']
